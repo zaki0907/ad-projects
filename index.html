@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>廣告案管理系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: #ddd9d0;
+    --border2: #c8c3b8;
+    --text: #1a1816;
+    --text2: #5a5650;
+    --text3: #9a958e;
+    --accent: #2a2420;
+    --green: #2d6a4f;
+    --green-bg: #d8f3dc;
+    --yellow: #8a6d00;
+    --yellow-bg: #fff3cd;
+    --blue: #185fa5;
+    --blue-bg: #e6f1fb;
+    --orange: #993c1d;
+    --orange-bg: #faece7;
+    --red: #a32d2d;
+    --red-bg: #fcebeb;
+    --gray: #5f5e5a;
+    --gray-bg: #f1efe8;
+    --purple: #533ab7;
+    --purple-bg: #eeedfe;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+
+  /* HEADER */
+  header { background: var(--accent); color: #fff; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.12em; color: #c8c3b8; text-transform: uppercase; }
+  .logo span { color: #fff; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .btn-switch { background: none; border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.7); padding: 5px 12px; border-radius: var(--radius); cursor: pointer; font-size: 12px; font-family: 'Noto Sans TC', sans-serif; transition: all 0.15s; }
+  .btn-switch:hover { border-color: rgba(255,255,255,0.6); color: #fff; }
+
+  /* NAV TABS */
+  .nav-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+  .nav-tab { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 13px; font-family: 'Noto Sans TC', sans-serif; color: var(--text3); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .nav-tab:hover { color: var(--text2); }
+  .nav-tab.active { color: var(--text); font-weight: 500; border-bottom-color: var(--accent); }
+
+  /* LAYOUT */
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* STATS BAR */
+  .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 2rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+  .stat-label { font-size: 11px; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); }
+  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* TOOLBAR */
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; gap: 12px; }
+  .toolbar-left { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .filter-btn { padding: 6px 14px; border-radius: 100px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 12px; font-family: 'Noto Sans TC', sans-serif; color: var(--text2); transition: all 0.15s; }
+  .filter-btn:hover, .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-add { background: var(--accent); color: #fff; border: none; padding: 8px 18px; border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 500; font-family: 'Noto Sans TC', sans-serif; display: flex; align-items: center; gap: 6px; transition: opacity 0.15s; white-space: nowrap; }
+  .btn-add:hover { opacity: 0.85; }
+
+  /* PROJECT CARDS */
+  .projects-grid { display: flex; flex-direction: column; gap: 12px; }
+  .project-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; transition: box-shadow 0.15s; }
+  .project-card:hover { box-shadow: var(--shadow); }
+  .card-header { display: flex; align-items: center; padding: 16px 20px; gap: 16px; cursor: pointer; user-select: none; }
+  .card-index { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); min-width: 28px; }
+  .card-main { flex: 1; min-width: 0; }
+  .card-title { font-size: 15px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-meta { font-size: 12px; color: var(--text3); margin-top: 2px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .status-badge { font-size: 11px; padding: 3px 10px; border-radius: 100px; font-weight: 500; white-space: nowrap; }
+  .s-ongoing { background: var(--blue-bg); color: var(--blue); }
+  .s-completed { background: var(--green-bg); color: var(--green); }
+  .s-pending { background: var(--yellow-bg); color: var(--yellow); }
+  .s-paused { background: var(--gray-bg); color: var(--gray); }
+  .card-toggle { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 16px; transition: transform 0.2s; flex-shrink: 0; }
+  .card-toggle.open { transform: rotate(180deg); }
+
+  /* TIMELINE */
+  .card-body { display: none; padding: 0 20px 20px 20px; border-top: 1px solid var(--border); }
+  .card-body.open { display: block; }
+  .timeline { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .milestone { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; text-align: center; min-width: 80px; flex: 1; }
+  .milestone.done { background: var(--green-bg); border-color: #b7e4c7; }
+  .milestone.in-progress { background: var(--blue-bg); border-color: #b5d4f4; }
+  .milestone.upcoming { background: var(--surface); border-color: var(--border); }
+  .milestone-icon { font-size: 14px; margin-bottom: 4px; }
+  .milestone.done .milestone-icon { color: var(--green); }
+  .milestone.in-progress .milestone-icon { color: var(--blue); }
+  .milestone.upcoming .milestone-icon { color: var(--text3); }
+  .milestone-name { font-size: 11px; font-weight: 500; color: var(--text2); margin-bottom: 4px; }
+  .milestone-date { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .milestone-date.empty { color: var(--border2); }
+
+  /* CARD ACTIONS */
+  .card-actions { display: flex; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .btn-sm { padding: 5px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: none; cursor: pointer; font-size: 12px; font-family: 'Noto Sans TC', sans-serif; color: var(--text2); transition: all 0.15s; }
+  .btn-sm:hover { background: var(--surface2); border-color: var(--border2); }
+  .btn-sm.danger { color: var(--red); }
+  .btn-sm.danger:hover { background: var(--red-bg); border-color: #f7c1c1; }
+
+  /* NOTES & CLIENT */
+  .card-notes { margin-top: 12px; font-size: 12px; color: var(--text2); background: var(--bg); border-radius: var(--radius); padding: 10px 12px; line-height: 1.7; white-space: pre-wrap; }
+  .card-notes.empty { color: var(--text3); font-style: italic; }
+  .card-client { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .client-tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; background: var(--purple-bg); color: var(--purple); font-weight: 500; }
+  .contact-tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; background: var(--orange-bg); color: var(--orange); font-weight: 500; }
+  .photo-tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; background: var(--yellow-bg); color: var(--yellow); font-weight: 500; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(26,24,22,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.hidden { display: none; }
+  .modal { background: var(--surface); border-radius: var(--radius-lg); width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 28px 32px; }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+  .form-row { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 6px; letter-spacing: 0.03em; }
+  .form-input, .form-select, .form-textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-family: 'Noto Sans TC', sans-serif; font-size: 13px; color: var(--text); background: var(--surface); transition: border-color 0.15s; outline: none; }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 72px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* CHECKBOX TOGGLE */
+  .checkbox-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border-radius: var(--radius); cursor: pointer; }
+  .checkbox-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .checkbox-label { font-size: 13px; color: var(--text2); }
+
+  /* MILESTONE FORM */
+  .milestone-section-title { font-size: 12px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 8px; }
+  .milestone-row { background: var(--bg); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; }
+  .milestone-row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .milestone-status-select { padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 11px; font-family: 'Noto Sans TC', sans-serif; background: var(--surface); color: var(--text); outline: none; }
+
+  /* MODAL FOOTER */
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .btn-cancel { padding: 8px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: none; cursor: pointer; font-size: 13px; font-family: 'Noto Sans TC', sans-serif; color: var(--text2); }
+  .btn-save { padding: 8px 20px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 500; font-family: 'Noto Sans TC', sans-serif; }
+  .btn-save:hover { opacity: 0.85; }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state-text { font-size: 14px; }
+
+  /* CLIENT STATS PAGE */
+  .year-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+  .year-selector label { font-size: 13px; color: var(--text2); }
+  .year-selector select { padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-family: 'Noto Sans TC', sans-serif; font-size: 13px; background: var(--surface); color: var(--text); outline: none; }
+  .client-cards { display: flex; flex-direction: column; gap: 12px; }
+  .client-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; }
+  .client-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .client-name { font-size: 16px; font-weight: 500; }
+  .client-count-badge { font-family: 'DM Mono', monospace; font-size: 13px; background: var(--purple-bg); color: var(--purple); padding: 4px 12px; border-radius: 100px; font-weight: 500; }
+  .contact-list { display: flex; flex-direction: column; gap: 6px; }
+  .contact-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg); border-radius: var(--radius); font-size: 13px; }
+  .contact-name { color: var(--text2); }
+  .contact-proj-count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
+  .contact-proj-list { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* PASSWORD SCREEN */
+  .pw-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .pw-screen.hidden { display: none; }
+  .pw-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px; width: 360px; text-align: center; }
+  .pw-logo { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 24px; }
+  .pw-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .pw-subtitle { font-size: 13px; color: var(--text3); margin-bottom: 24px; }
+  .pw-error { font-size: 12px; color: var(--red); margin-top: 8px; min-height: 18px; }
+  .pw-hint { font-size: 11px; color: var(--text3); margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<!-- 密碼畫面 -->
+<div class="pw-screen" id="pwScreen">
+  <div class="pw-box">
+    <div class="pw-logo">AD / PROJ</div>
+    <div class="pw-title">廣告案管理系統</div>
+    <div class="pw-subtitle">請輸入密碼進入系統</div>
+    <input class="form-input" type="password" id="pwInput" placeholder="輸入密碼" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="pw-error" id="pwError"></div>
+    <button class="btn-save" style="width:100%;margin-top:12px" onclick="doLogin()">進入系統</button>
+    <div class="pw-hint">預設密碼：<strong>admin123</strong><br>（上線後請自行修改程式碼中的密碼）</div>
+  </div>
+</div>
+
+<!-- 主介面 -->
+<header>
+  <div class="logo"><span>AD</span> / PROJ</div>
+  <div class="header-right">
+    <button class="btn-switch" onclick="logout()">登出</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchPage('projects',this)">📋 案子列表</button>
+    <button class="nav-tab" onclick="switchPage('clients',this)">🏢 客戶統計</button>
+  </div>
+
+  <!-- 案子列表 -->
+  <div class="page active" id="page-projects">
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">進行中</div>
+        <div class="stat-value" id="countOngoing">0</div>
+        <div class="stat-sub">個案子</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">已結案</div>
+        <div class="stat-value" id="countDone">0</div>
+        <div class="stat-sub">個案子</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">待確認</div>
+        <div class="stat-value" id="countPending">0</div>
+        <div class="stat-sub">個案子</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">案子總數</div>
+        <div class="stat-value" id="countTotal">0</div>
+        <div class="stat-sub">個</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button class="filter-btn active" onclick="setFilter('all',this)">全部</button>
+        <button class="filter-btn" onclick="setFilter('ongoing',this)">進行中</button>
+        <button class="filter-btn" onclick="setFilter('completed',this)">已結案</button>
+        <button class="filter-btn" onclick="setFilter('pending',this)">待確認</button>
+        <button class="filter-btn" onclick="setFilter('paused',this)">暫停</button>
+      </div>
+      <button class="btn-add" onclick="openModal()">＋ 新增案子</button>
+    </div>
+    <div class="projects-grid" id="projectsGrid"></div>
+  </div>
+
+  <!-- 客戶統計 -->
+  <div class="page" id="page-clients">
+    <div class="year-selector">
+      <label>統計年份</label>
+      <select id="yearSelect" onchange="renderClients()"></select>
+    </div>
+    <div class="client-cards" id="clientCards"></div>
+  </div>
+</div>
+
+<!-- 新增/編輯 Modal -->
+<div class="modal-overlay hidden" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">新增廣告案</div>
+    <div class="form-row">
+      <label class="form-label">品牌名稱 / 案名</label>
+      <input class="form-input" id="fName" placeholder="例：Nike 夏季廣告">
+    </div>
+    <div class="form-grid-3" style="margin-bottom:16px">
+      <div>
+        <label class="form-label">負責人</label>
+        <input class="form-input" id="fOwner" placeholder="例：小明">
+      </div>
+      <div>
+        <label class="form-label">案子狀態</label>
+        <select class="form-select" id="fStatus">
+          <option value="ongoing">進行中</option>
+          <option value="pending">待確認</option>
+          <option value="paused">暫停</option>
+          <option value="completed">已結案</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">建立年份</label>
+        <input class="form-input" id="fYear" type="number" placeholder="例：2025" min="2000" max="2099">
+      </div>
+    </div>
+    <div class="form-grid-2" style="margin-bottom:16px">
+      <div>
+        <label class="form-label">發案公司</label>
+        <input class="form-input" id="fClient" placeholder="例：Nike Taiwan" list="clientList">
+        <datalist id="clientList"></datalist>
+      </div>
+      <div>
+        <label class="form-label">窗口姓名</label>
+        <input class="form-input" id="fContact" placeholder="例：陳小姐">
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-checkbox-row" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--radius);cursor:pointer">
+        <input type="checkbox" id="fHasPhoto" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+        <span style="font-size:13px;color:var(--text2)">📷 此案包含照片拍攝</span>
+      </label>
+    </div>
+    <div class="form-row">
+      <label class="form-label">備註</label>
+      <textarea class="form-textarea" id="fNotes" placeholder="預算、特殊需求等..."></textarea>
+    </div>
+    <div class="form-row">
+      <div class="milestone-section-title">影片時間節點</div>
+      <div id="milestonesVideoForm"></div>
+      <div id="photoSection">
+        <div class="milestone-section-title" style="margin-top:12px">照片時間節點</div>
+        <div id="milestonesPhotoForm"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-save" onclick="saveProject()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PASSWORDS = { owner: 'admin123' };
+
+const MILESTONES_VIDEO = [
+  { key: 'script_draft', name: '腳本初稿' },
+  { key: 'script_final', name: '腳本定案' },
+  { key: 'shooting',     name: '影片拍攝' },
+  { key: 'acopy',        name: 'A-Copy'   },
+  { key: 'bcopy',        name: 'B-Copy'   },
+  { key: 'copy',         name: '文案'     },
+  { key: 'release',      name: '上片'     },
+];
+const MILESTONES_PHOTO = [
+  { key: 'photo_acopy',    name: 'A-Copy' },
+  { key: 'photo_bcopy',    name: 'B-Copy' },
+  { key: 'photo_delivery', name: '交檔'   },
+];
+
+const STATUS_LABELS = { ongoing:'進行中', completed:'已結案', pending:'待確認', paused:'暫停' };
+const STATUS_CLASSES = { ongoing:'s-ongoing', completed:'s-completed', pending:'s-pending', paused:'s-paused' };
+const MILESTONE_STATUS = { upcoming:'未開始', 'in-progress':'進行中', done:'已完成' };
+
+let projects = JSON.parse(localStorage.getItem('adProjects') || '[]');
+let currentRole = null;
+let editingId = null;
+let currentFilter = 'all';
+
+function save() { localStorage.setItem('adProjects', JSON.stringify(projects)); }
+
+// 密碼
+function doLogin() {
+  const v = document.getElementById('pwInput').value;
+  if (v === PASSWORDS.owner) {
+    currentRole = 'owner';
+    document.getElementById('pwScreen').classList.add('hidden');
+    initYearSelect();
+    render();
+  } else {
+    document.getElementById('pwError').textContent = '密碼錯誤，請再試一次';
+  }
+}
+function logout() {
+  currentRole = null;
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwError').textContent = '';
+  document.getElementById('pwScreen').classList.remove('hidden');
+}
+
+// 頁面切換
+function switchPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'clients') { initYearSelect(); renderClients(); }
+}
+
+// 年份選單
+function initYearSelect() {
+  const sel = document.getElementById('yearSelect');
+  const years = [...new Set(projects.map(p => p.year || new Date(p.created||'').getFullYear() || new Date().getFullYear()))].sort((a,b)=>b-a);
+  const cur = new Date().getFullYear();
+  if (!years.includes(cur)) years.unshift(cur);
+  const prev = sel.value;
+  sel.innerHTML = years.map(y => `<option value="${y}" ${y==prev?'selected':''}>${y} 年</option>`).join('');
+  if (!sel.value) sel.value = cur;
+}
+
+// 篩選
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+// 渲染案子列表
+function render() {
+  const filtered = currentFilter === 'all' ? projects : projects.filter(p => p.status === currentFilter);
+  document.getElementById('countOngoing').textContent = projects.filter(p=>p.status==='ongoing').length;
+  document.getElementById('countDone').textContent = projects.filter(p=>p.status==='completed').length;
+  document.getElementById('countPending').textContent = projects.filter(p=>p.status==='pending').length;
+  document.getElementById('countTotal').textContent = projects.length;
+
+  const grid = document.getElementById('projectsGrid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">目前沒有符合的案子</div></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map((p, i) => {
+    const icons = { upcoming:'○', 'in-progress':'◑', done:'●' };
+
+    const videoMs = MILESTONES_VIDEO.map(m => {
+      const ms = p.milestones?.[m.key] || {};
+      const st = ms.status || 'upcoming';
+      return `<div class="milestone ${st}"><div class="milestone-icon">${icons[st]}</div><div class="milestone-name">${m.name}</div><div class="milestone-date ${ms.date?'':'empty'}">${ms.date||'—'}</div></div>`;
+    }).join('');
+
+    const photoMs = p.hasPhoto ? MILESTONES_PHOTO.map(m => {
+      const ms = p.milestones?.[m.key] || {};
+      const st = ms.status || 'upcoming';
+      return `<div class="milestone ${st}"><div class="milestone-icon">${icons[st]}</div><div class="milestone-name">${m.name}</div><div class="milestone-date ${ms.date?'':'empty'}">${ms.date||'—'}</div></div>`;
+    }).join('') : '';
+
+    const tags = [
+      p.client ? `<span class="client-tag">🏢 ${escHtml(p.client)}</span>` : '',
+      p.contact ? `<span class="contact-tag">👤 ${escHtml(p.contact)}</span>` : '',
+      p.hasPhoto ? `<span class="photo-tag">📷 含照片</span>` : '',
+    ].filter(Boolean).join('');
+
+    const notes = p.notes ? `<div class="card-notes">${escHtml(p.notes)}</div>` : '';
+
+    return `<div class="project-card" id="card-${p.id}">
+      <div class="card-header" onclick="toggleCard('${p.id}')">
+        <div class="card-index">${String(i+1).padStart(2,'0')}</div>
+        <div class="card-main">
+          <div class="card-title">${escHtml(p.name)}</div>
+          <div class="card-meta">
+            <span>負責人：${escHtml(p.owner||'—')}</span>
+            <span>建立：${p.created||'—'}</span>
+          </div>
+        </div>
+        <span class="status-badge ${STATUS_CLASSES[p.status]}">${STATUS_LABELS[p.status]}</span>
+        <span class="card-toggle" id="toggle-${p.id}">▾</span>
+      </div>
+      <div class="card-body" id="body-${p.id}">
+        ${tags ? `<div class="card-client">${tags}</div>` : ''}
+        <div style="font-size:11px;color:var(--text3);margin-top:14px;margin-bottom:4px;font-weight:500;letter-spacing:0.05em;text-transform:uppercase">影片節點</div>
+        <div class="timeline">${videoMs}</div>
+        ${p.hasPhoto ? `<div style="font-size:11px;color:var(--text3);margin-top:14px;margin-bottom:4px;font-weight:500;letter-spacing:0.05em;text-transform:uppercase">照片節點</div><div class="timeline">${photoMs}</div>` : ''}
+        ${notes}
+        <div class="card-actions">
+          <button class="btn-sm" onclick="openEditModal('${p.id}')">✏️ 編輯</button>
+          <button class="btn-sm danger" onclick="deleteProject('${p.id}')">🗑 刪除</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCard(id) {
+  document.getElementById('body-'+id).classList.toggle('open');
+  document.getElementById('toggle-'+id).classList.toggle('open');
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// 渲染客戶統計
+function renderClients() {
+  const year = parseInt(document.getElementById('yearSelect').value);
+  const inYear = projects.filter(p => (p.year || new Date(p.created||'').getFullYear()) == year);
+
+  const container = document.getElementById('clientCards');
+  if (!inYear.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏢</div><div class="empty-state-text">${year} 年尚無案子資料</div></div>`;
+    return;
+  }
+
+  // 以公司分組
+  const byClient = {};
+  inYear.forEach(p => {
+    const c = p.client || '（未填寫公司）';
+    if (!byClient[c]) byClient[c] = [];
+    byClient[c].push(p);
+  });
+
+  // 依案量排序
+  const sorted = Object.entries(byClient).sort((a,b) => b[1].length - a[1].length);
+
+  container.innerHTML = sorted.map(([client, ps]) => {
+    // 以窗口分組
+    const byContact = {};
+    ps.forEach(p => {
+      const ct = p.contact || '（未填寫窗口）';
+      if (!byContact[ct]) byContact[ct] = [];
+      byContact[ct].push(p);
+    });
+
+    const contactRows = Object.entries(byContact).map(([contact, cps]) =>
+      `<div class="contact-row">
+        <div>
+          <div class="contact-name">👤 ${escHtml(contact)}</div>
+          <div class="contact-proj-list">${cps.map(p=>escHtml(p.name)).join('、')}</div>
+        </div>
+        <div class="contact-proj-count">${cps.length} 件</div>
+      </div>`
+    ).join('');
+
+    return `<div class="client-card">
+      <div class="client-card-header">
+        <div class="client-name">🏢 ${escHtml(client)}</div>
+        <div class="client-count-badge">共 ${ps.length} 件</div>
+      </div>
+      <div class="contact-list">${contactRows}</div>
+    </div>`;
+  }).join('');
+}
+
+// Modal
+function buildMsForm(defs, existing) {
+  return defs.map(m => {
+    const ms = existing?.[m.key] || {};
+    return `<div class="milestone-row">
+      <div class="milestone-row-top">
+        <span style="font-size:13px;font-weight:500">${m.name}</span>
+        <select class="milestone-status-select" id="ms_st_${m.key}">
+          ${Object.entries(MILESTONE_STATUS).map(([v,l])=>`<option value="${v}" ${ms.status===v?'selected':''}>${l}</option>`).join('')}
+        </select>
+      </div>
+      <input class="form-input" type="date" id="ms_dt_${m.key}" value="${ms.date||''}" style="font-size:12px;padding:6px 10px">
+    </div>`;
+  }).join('');
+}
+
+function updateClientDatalist() {
+  const clients = [...new Set(projects.map(p=>p.client).filter(Boolean))];
+  document.getElementById('clientList').innerHTML = clients.map(c=>`<option value="${escHtml(c)}">`).join('');
+}
+
+function togglePhotoSection() {
+  const show = document.getElementById('fHasPhoto').checked;
+  document.getElementById('photoSection').style.display = show ? 'block' : 'none';
+}
+
+function openModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '新增廣告案';
+  document.getElementById('fName').value = '';
+  document.getElementById('fOwner').value = '';
+  document.getElementById('fStatus').value = 'ongoing';
+  document.getElementById('fYear').value = new Date().getFullYear();
+  document.getElementById('fClient').value = '';
+  document.getElementById('fContact').value = '';
+  document.getElementById('fHasPhoto').checked = false;
+  document.getElementById('fNotes').value = '';
+  document.getElementById('photoSection').style.display = 'none';
+  document.getElementById('milestonesVideoForm').innerHTML = buildMsForm(MILESTONES_VIDEO, {});
+  document.getElementById('milestonesPhotoForm').innerHTML = buildMsForm(MILESTONES_PHOTO, {});
+  document.getElementById('fHasPhoto').onchange = togglePhotoSection;
+  updateClientDatalist();
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function openEditModal(id) {
+  const p = projects.find(x=>x.id===id);
+  if (!p) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = '編輯廣告案';
+  document.getElementById('fName').value = p.name;
+  document.getElementById('fOwner').value = p.owner||'';
+  document.getElementById('fStatus').value = p.status;
+  document.getElementById('fYear').value = p.year || new Date().getFullYear();
+  document.getElementById('fClient').value = p.client||'';
+  document.getElementById('fContact').value = p.contact||'';
+  document.getElementById('fHasPhoto').checked = !!p.hasPhoto;
+  document.getElementById('fNotes').value = p.notes||'';
+  document.getElementById('photoSection').style.display = p.hasPhoto ? 'block' : 'none';
+  document.getElementById('milestonesVideoForm').innerHTML = buildMsForm(MILESTONES_VIDEO, p.milestones||{});
+  document.getElementById('milestonesPhotoForm').innerHTML = buildMsForm(MILESTONES_PHOTO, p.milestones||{});
+  document.getElementById('fHasPhoto').onchange = togglePhotoSection;
+  updateClientDatalist();
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+function saveProject() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { alert('請輸入品牌名稱 / 案名'); return; }
+
+  const milestones = {};
+  [...MILESTONES_VIDEO, ...MILESTONES_PHOTO].forEach(m => {
+    const stEl = document.getElementById('ms_st_'+m.key);
+    const dtEl = document.getElementById('ms_dt_'+m.key);
+    if (stEl) milestones[m.key] = { status: stEl.value, date: dtEl.value };
+  });
+
+  const data = {
+    name,
+    owner: document.getElementById('fOwner').value.trim(),
+    status: document.getElementById('fStatus').value,
+    year: parseInt(document.getElementById('fYear').value) || new Date().getFullYear(),
+    client: document.getElementById('fClient').value.trim(),
+    contact: document.getElementById('fContact').value.trim(),
+    hasPhoto: document.getElementById('fHasPhoto').checked,
+    notes: document.getElementById('fNotes').value.trim(),
+    milestones,
+  };
+
+  if (editingId) {
+    const idx = projects.findIndex(x=>x.id===editingId);
+    projects[idx] = { ...projects[idx], ...data };
+  } else {
+    projects.push({ id: Date.now().toString(), created: new Date().toLocaleDateString('zh-TW'), ...data });
+  }
+  save();
+  closeModal();
+  render();
+}
+
+function deleteProject(id) {
+  if (!confirm('確定要刪除這個案子嗎？')) return;
+  projects = projects.filter(x=>x.id!==id);
+  save();
+  render();
+}
+
+// 示範資料
+if (!projects.length) {
+  projects = [
+    {
+      id:'1', name:'Nike 夏季形象廣告', owner:'小明', status:'ongoing',
+      year:2025, created:'2025/01/15', client:'Nike Taiwan', contact:'陳小姐',
+      hasPhoto:true, notes:'預算 NT$200,000',
+      milestones:{
+        script_draft:{ status:'done', date:'2025-01-20' },
+        script_final:{ status:'done', date:'2025-01-28' },
+        shooting:    { status:'done', date:'2025-02-05' },
+        acopy:       { status:'in-progress', date:'2025-02-18' },
+        bcopy:       { status:'upcoming', date:'' },
+        copy:        { status:'upcoming', date:'' },
+        release:     { status:'upcoming', date:'2025-03-01' },
+        photo_acopy:    { status:'in-progress', date:'2025-02-20' },
+        photo_bcopy:     { status:'upcoming', date:'' },
+        photo_delivery:  { status:'upcoming', date:'2025-03-01' },
+      }
+    },
+    {
+      id:'2', name:'統一企業 過年促銷影片', owner:'小明', status:'completed',
+      year:2024, created:'2024/11/10', client:'統一企業', contact:'林先生',
+      hasPhoto:false, notes:'已結案，素材備份於雲端硬碟',
+      milestones:{
+        script_draft:{ status:'done', date:'2024-11-15' },
+        script_final:{ status:'done', date:'2024-11-22' },
+        shooting:    { status:'done', date:'2024-12-03' },
+        acopy:       { status:'done', date:'2024-12-20' },
+        bcopy:       { status:'done', date:'2024-12-25' },
+        copy:        { status:'done', date:'2024-12-26' },
+        release:     { status:'done', date:'2025-01-05' },
+      }
+    },
+    {
+      id:'3', name:'全聯 新品上市 15秒', owner:'小明', status:'pending',
+      year:2025, created:'2025/02/01', client:'全聯福利中心', contact:'王小姐',
+      hasPhoto:false, notes:'等待客戶確認腳本方向',
+      milestones:{
+        script_draft:{ status:'done', date:'2025-02-10' },
+        script_final:{ status:'upcoming', date:'' },
+        shooting:    { status:'upcoming', date:'' },
+        acopy:       { status:'upcoming', date:'' },
+        bcopy:       { status:'upcoming', date:'' },
+        copy:        { status:'upcoming', date:'' },
+        release:     { status:'upcoming', date:'' },
+      }
+    },
+    {
+      id:'4', name:'Nike 秋冬商品形象', owner:'小明', status:'completed',
+      year:2025, created:'2025/03/01', client:'Nike Taiwan', contact:'陳小姐',
+      hasPhoto:true, notes:'',
+      milestones:{
+        script_draft:{ status:'done', date:'2025-03-05' },
+        script_final:{ status:'done', date:'2025-03-10' },
+        shooting:    { status:'done', date:'2025-03-20' },
+        acopy:       { status:'done', date:'2025-04-01' },
+        bcopy:       { status:'done', date:'2025-04-05' },
+        copy:        { status:'done', date:'2025-04-06' },
+        release:     { status:'done', date:'2025-04-15' },
+        photo_acopy:    { status:'done', date:'2025-03-28' },
+        photo_bcopy:     { status:'done', date:'2025-04-05' },
+        photo_delivery:  { status:'done', date:'2025-04-10' },
+      }
+    },
+  ];
+  save();
+}
+</script>
+</body>
+</html>
