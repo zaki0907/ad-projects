@@ -19,6 +19,24 @@
   --grey3:  #888888;   /* muted text */
   --grey4:  #444444;   /* secondary text */
 
+  /* action colours */
+  --col-edit:    #3b82f6;   /* 藍 */
+  --col-edit-bg: #eff6ff;
+  --col-export:  #8b5cf6;   /* 紫 */
+  --col-export-bg: #f5f3ff;
+  --col-del:     #ef4444;   /* 紅 */
+  --col-del-bg:  #fef2f2;
+
+  /* status colours */
+  --col-ongoing:   #2563eb;
+  --col-ongoing-bg:#dbeafe;
+  --col-done:      #16a34a;
+  --col-done-bg:   #dcfce7;
+  --col-pending:   #d97706;
+  --col-pending-bg:#fef3c7;
+  --col-paused:    #6b7280;
+  --col-paused-bg: #f3f4f6;
+
   --ff-pixel: 'Press Start 2P', monospace;
   --ff-body:  'Nunito', 'Zen Maru Gothic', sans-serif;
   --ff-cjk:   'Zen Maru Gothic', 'Nunito', sans-serif;
@@ -1239,7 +1257,7 @@ function render() {
         ${p.hasPhoto ? `<div class="ms-section"><div class="ms-section-label">照片節點</div>${photoMs}</div>` : ''}
         ${notes ? `<div class="card-notes-text">${notes.replace(/<div class="card-notes-text">/,'').replace(/<\/div>/,'')}</div>` : ''}
         <div class="card-actions">
-          <button class="btn-action" onclick="openEditModal('${p.id}')">✏ 編輯</button>
+          <button class="btn-action edit" onclick="openEditModal('${p.id}')">✏ 編輯</button>
           <button class="btn-action primary" onclick="openExport('${p.id}')">↗ 確認圖</button>
           <button class="btn-action danger" onclick="deleteProject('${p.id}')">✕ 刪除</button>
         </div>
