@@ -797,7 +797,7 @@ header {
 }
 .ms-form-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -807,16 +807,7 @@ header {
 }
 @media (max-width: 480px) { .ms-form-row { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; } .ms-form-row .ms-form-name { grid-column: 1 / -1; } }
 .ms-form-name { font-family: var(--ff-body); font-size: 13px; font-weight: 700; color: var(--black); }
-.ms-status-sel {
-  font-family: var(--ff-body);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border: 2px solid var(--black);
-  background: var(--white);
-  color: var(--black);
-  outline: none;
-}
+
 .ms-date-input {
   font-family: var(--ff-mono);
   font-size: 11px;
@@ -1344,9 +1335,6 @@ function buildMsForm(defs, existing) {
     const ms = existing?.[m.key] || {};
     return `<div class="ms-form-row">
       <span class="ms-form-name">${m.name}</span>
-      <select class="ms-status-sel" id="ms_st_${m.key}">
-        ${Object.entries(MILESTONE_STATUS).map(([v,l])=>`<option value="${v}" ${ms.status===v?'selected':''}>${l}</option>`).join('')}
-      </select>
       <input class="ms-date-input" type="date" id="ms_dt_${m.key}" value="${ms.date||''}">
     </div>`;
   }).join('');
@@ -1409,10 +1397,13 @@ function saveProject() {
   if (!name) { alert('請輸入品牌名稱 / 案名'); return; }
 
   const milestones = {};
+  const today = new Date().toISOString().slice(0,10);
   [...MILESTONES_VIDEO, ...MILESTONES_PHOTO].forEach(m => {
-    const stEl = document.getElementById('ms_st_'+m.key);
     const dtEl = document.getElementById('ms_dt_'+m.key);
-    if (stEl) milestones[m.key] = { status: stEl.value, date: dtEl.value };
+    if (!dtEl) return;
+    const date = dtEl.value;
+    const status = !date ? 'upcoming' : date <= today ? 'done' : 'upcoming';
+    milestones[m.key] = { status, date };
   });
 
   const data = {
