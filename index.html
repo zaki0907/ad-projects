@@ -218,6 +218,17 @@
   .cal-ev-ms { color: var(--text3); font-size: 12px; white-space: nowrap; }
   .cal-ev-badge { font-size: 11px; padding: 2px 8px; border-radius: 100px; white-space: nowrap; }
 
+
+  /* EXPORT IMAGE MODAL */
+  .export-overlay { position: fixed; inset: 0; background: rgba(26,24,22,0.7); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .export-overlay.hidden { display: none; }
+  .export-modal { background: var(--surface); border-radius: var(--radius-lg); width: 100%; max-width: 540px; padding: 24px; }
+  .export-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .export-modal-title { font-size: 15px; font-weight: 600; }
+  .export-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text3); line-height: 1; padding: 0 4px; }
+  .export-preview-wrap { background: #f0ede6; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; overflow: auto; }
+  #exportCanvas { display: block; max-width: 100%; border-radius: 6px; box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
+  .export-actions { display: flex; gap: 8px; justify-content: flex-end; }
   /* PASSWORD SCREEN */
   .pw-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999; }
   .pw-screen.hidden { display: none; }
@@ -331,6 +342,23 @@
     </div>
     <div class="client-cards" id="clientCards"></div>
   </div>
+
+<!-- 產出確認圖 Modal -->
+<div class="export-overlay hidden" id="exportOverlay">
+  <div class="export-modal">
+    <div class="export-modal-header">
+      <div class="export-modal-title">📤 時間節點確認圖</div>
+      <button class="export-close" onclick="closeExport()">×</button>
+    </div>
+    <div class="export-preview-wrap">
+      <canvas id="exportCanvas"></canvas>
+    </div>
+    <div class="export-actions">
+      <button class="btn-cancel" onclick="closeExport()">關閉</button>
+      <button class="btn-save" onclick="downloadExport()">⬇ 下載圖片</button>
+    </div>
+  </div>
+</div>
 </div>
 
 <!-- 新增/編輯 Modal -->
@@ -532,6 +560,7 @@ function render() {
         ${notes}
         <div class="card-actions">
           <button class="btn-sm" onclick="openEditModal('${p.id}')">✏️ 編輯</button>
+          <button class="btn-sm" onclick="openExport('${p.id}')">📤 產出確認圖</button>
           <button class="btn-sm danger" onclick="deleteProject('${p.id}')">🗑 刪除</button>
         </div>
       </div>
@@ -706,6 +735,232 @@ function deleteProject(id) {
   save();
   render();
 }
+// ── 產出確認圖 ──
+let exportProjectId = null;
+
+function openExport(id) {
+  exportProjectId = id;
+  const p = projects.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('exportOverlay').classList.remove('hidden');
+  drawExportCanvas(p);
+}
+function closeExport() {
+  document.getElementById('exportOverlay').classList.add('hidden');
+}
+function downloadExport() {
+  const canvas = document.getElementById('exportCanvas');
+  const a = document.createElement('a');
+  a.download = '時間節點確認_' + (exportProjectId ? (projects.find(x=>x.id===exportProjectId)?.name||'專案') : '專案') + '.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+function drawExportCanvas(p) {
+  const canvas = document.getElementById('exportCanvas');
+  const DPR = 2;
+  const W = 500;
+
+  const allMs = [...MILESTONES_VIDEO, ...(p.hasPhoto ? MILESTONES_PHOTO : [])];
+  const msWithDate = allMs.map(m => ({
+    name: m.name,
+    isPhoto: m.key.startsWith('photo_'),
+    date: p.milestones?.[m.key]?.date || '',
+    status: p.milestones?.[m.key]?.status || 'upcoming',
+  }));
+
+  // Layout constants
+  const PADDING = 32;
+  const HEADER_H = 110;
+  const ROW_H = 44;
+  const FOOTER_H = 44;
+  const SECTION_GAP = 28;
+  const videoMs = msWithDate.filter(m => !m.isPhoto);
+  const photoMs = msWithDate.filter(m => m.isPhoto);
+
+  let H = HEADER_H + PADDING;
+  H += 20 + videoMs.length * ROW_H; // section title + rows
+  if (photoMs.length) H += SECTION_GAP + 20 + photoMs.length * ROW_H;
+  H += FOOTER_H + PADDING;
+
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
+
+  // ── Background
+  ctx.fillStyle = '#FAFAF8';
+  roundRect(ctx, 0, 0, W, H, 12);
+  ctx.fill();
+
+  // ── Top accent bar
+  ctx.fillStyle = '#2a2420';
+  roundRect(ctx, 0, 0, W, 6, 0);
+  ctx.fill();
+
+  let y = 24;
+
+  // ── Header area
+  // Brand/project name
+  ctx.fillStyle = '#2a2420';
+  ctx.font = 'bold 18px "Noto Sans TC", sans-serif';
+  ctx.fillText(truncate(ctx, p.name, W - PADDING*2), PADDING, y + 18);
+  y += 30;
+
+  // Client + contact chips
+  if (p.client || p.contact) {
+    ctx.font = '12px "Noto Sans TC", sans-serif';
+    let cx = PADDING;
+    if (p.client) {
+      const lbl = '🏢 ' + p.client;
+      const tw = ctx.measureText(lbl).width;
+      ctx.fillStyle = '#eeedfe';
+      roundRect(ctx, cx, y, tw + 18, 22, 11);
+      ctx.fill();
+      ctx.fillStyle = '#533ab7';
+      ctx.fillText(lbl, cx + 9, y + 15);
+      cx += tw + 26;
+    }
+    if (p.contact) {
+      const lbl = '👤 ' + p.contact;
+      const tw = ctx.measureText(lbl).width;
+      ctx.fillStyle = '#faece7';
+      roundRect(ctx, cx, y, tw + 18, 22, 11);
+      ctx.fill();
+      ctx.fillStyle = '#993c1d';
+      ctx.fillText(lbl, cx + 9, y + 15);
+    }
+    y += 34;
+  }
+
+  // Divider
+  ctx.strokeStyle = '#ddd9d0';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PADDING, y);
+  ctx.lineTo(W - PADDING, y);
+  ctx.stroke();
+  y += 18;
+
+  // ── Draw milestone sections
+  function drawSection(title, items) {
+    // Section title
+    ctx.font = '500 11px "DM Mono", monospace';
+    ctx.fillStyle = '#9a958e';
+    ctx.fillText(title.toUpperCase(), PADDING, y + 11);
+    y += 20;
+
+    items.forEach((m, i) => {
+      const rowY = y + i * ROW_H;
+      const isLast = i === items.length - 1;
+
+      // Row bg (alternating)
+      if (i % 2 === 0) {
+        ctx.fillStyle = '#f5f3ee';
+        roundRect(ctx, PADDING, rowY, W - PADDING*2, ROW_H - 4, 6);
+        ctx.fill();
+      }
+
+      // Status dot
+      const dotX = PADDING + 14;
+      const dotY = rowY + ROW_H/2 - 2;
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, 5, 0, Math.PI*2);
+      if (m.status === 'done') ctx.fillStyle = '#2d6a4f';
+      else if (m.status === 'in-progress') ctx.fillStyle = '#185fa5';
+      else ctx.fillStyle = '#c8c3b8';
+      ctx.fill();
+
+      // Milestone name
+      ctx.font = '500 13px "Noto Sans TC", sans-serif';
+      ctx.fillStyle = '#1a1816';
+      ctx.fillText(m.name, PADDING + 28, rowY + ROW_H/2 + 5);
+
+      // Date (right-aligned)
+      ctx.font = '12px "DM Mono", monospace';
+      if (m.date) {
+        ctx.fillStyle = '#5a5650';
+        ctx.textAlign = 'right';
+        ctx.fillText(m.date, W - PADDING, rowY + ROW_H/2 + 5);
+      } else {
+        ctx.fillStyle = '#c8c3b8';
+        ctx.textAlign = 'right';
+        ctx.fillText('待定', W - PADDING, rowY + ROW_H/2 + 5);
+      }
+      ctx.textAlign = 'left';
+
+      // Status label (next to date)
+      const stLabel = m.status==='done'?'已完成': m.status==='in-progress'?'進行中':'未開始';
+      const stColor = m.status==='done'?'#2d6a4f': m.status==='in-progress'?'#185fa5':'#9a958e';
+      const stBg = m.status==='done'?'#d8f3dc': m.status==='in-progress'?'#e6f1fb':'#f1efe8';
+      ctx.font = '11px "Noto Sans TC", sans-serif';
+      const stW = ctx.measureText(stLabel).width;
+      const stX = W - PADDING - (m.date ? ctx.measureText(m.date).width : ctx.measureText('待定').width) - stW - 28;
+      ctx.fillStyle = stBg;
+      roundRect(ctx, stX, rowY + ROW_H/2 - 9, stW + 14, 18, 9);
+      ctx.fill();
+      ctx.fillStyle = stColor;
+      ctx.fillText(stLabel, stX + 7, rowY + ROW_H/2 + 4);
+
+      // Row separator
+      if (!isLast) {
+        ctx.strokeStyle = '#e8e4dd';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(PADDING + 24, rowY + ROW_H - 2);
+        ctx.lineTo(W - PADDING, rowY + ROW_H - 2);
+        ctx.stroke();
+      }
+    });
+    y += items.length * ROW_H + 4;
+  }
+
+  drawSection('影片節點', videoMs);
+  if (photoMs.length) {
+    y += SECTION_GAP - 10;
+    ctx.strokeStyle = '#ddd9d0';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PADDING, y - 10); ctx.lineTo(W-PADDING, y-10); ctx.stroke();
+    drawSection('照片節點', photoMs);
+  }
+
+  // ── Footer
+  y += 8;
+  ctx.strokeStyle = '#ddd9d0';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PADDING, y); ctx.lineTo(W-PADDING, y); ctx.stroke();
+  y += 14;
+  ctx.font = '11px "DM Mono", monospace';
+  ctx.fillStyle = '#9a958e';
+  const today = new Date().toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'});
+  ctx.fillText('產出日期：' + today, PADDING, y + 10);
+  ctx.textAlign = 'right';
+  ctx.fillText('AD / PROJ', W - PADDING, y + 10);
+  ctx.textAlign = 'left';
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+function truncate(ctx, text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return text;
+  while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0,-1);
+  return text + '…';
+}
+
 // ── 甘特圖 ──
 let ganttYear = new Date().getFullYear();
 let ganttMonth = new Date().getMonth(); // 0-indexed
