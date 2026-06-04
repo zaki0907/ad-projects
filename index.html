@@ -38,6 +38,24 @@
   --col-paused-bg: #f3f4f6;
 
   --ff-pixel: 'Press Start 2P', monospace;
+
+  /* action colours */
+  --col-edit:    #2563eb;   /* 藍 */
+  --col-edit-bg: #eff6ff;
+  --col-export:  #7c3aed;   /* 紫 */
+  --col-export-bg: #f5f3ff;
+  --col-del:     #dc2626;   /* 紅 */
+  --col-del-bg:  #fef2f2;
+
+  /* status colours */
+  --col-ongoing:   #2563eb;
+  --col-ongoing-bg: #dbeafe;
+  --col-done:      #16a34a;
+  --col-done-bg:   #dcfce7;
+  --col-pending:   #d97706;
+  --col-pending-bg:#fef3c7;
+  --col-paused:    #6b7280;
+  --col-paused-bg: #f3f4f6;
   --ff-body:  'Nunito', 'Zen Maru Gothic', sans-serif;
   --ff-cjk:   'Zen Maru Gothic', 'Nunito', sans-serif;
   --ff-mono:  'DM Mono', monospace;
@@ -306,10 +324,10 @@ header {
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
-.s-ongoing   { background: var(--black); color: var(--white); }
-.s-completed { background: var(--white); color: var(--black); }
-.s-pending   { background: var(--grey2); color: var(--black); }
-.s-paused    { background: var(--white); color: var(--grey3); border-color: var(--grey3); }
+.s-ongoing   { background: var(--col-ongoing-bg);  color: var(--col-ongoing);  border-color: var(--col-ongoing); }
+.s-completed { background: var(--col-done-bg);    color: var(--col-done);    border-color: var(--col-done); }
+.s-pending   { background: var(--col-pending-bg); color: var(--col-pending); border-color: var(--col-pending); }
+.s-paused    { background: var(--col-paused-bg);  color: var(--col-paused);  border-color: var(--col-paused); }
 
 .card-chevron {
   font-family: var(--ff-body);
@@ -434,8 +452,12 @@ header {
 .btn-action:active { transform: translate(1px, 1px); box-shadow: none; }
 .btn-action.primary { background: var(--black); color: var(--white); }
 .btn-action.primary:hover { background: var(--grey4); }
-.btn-action.danger { color: var(--grey3); border-color: var(--grey3); }
-.btn-action.danger:hover { color: var(--black); border-color: var(--black); background: var(--grey1); }
+.btn-action.edit   { color: var(--col-edit);   border-color: var(--col-edit);   background: var(--col-edit-bg); }
+.btn-action.edit:hover   { background: #dbeafe; transform: translate(-1px,-1px); box-shadow: 2px 2px 0 var(--col-edit); }
+.btn-action.export { color: var(--col-export); border-color: var(--col-export); background: var(--col-export-bg); }
+.btn-action.export:hover { background: #ede9fe; transform: translate(-1px,-1px); box-shadow: 2px 2px 0 var(--col-export); }
+.btn-action.danger { color: var(--col-del);  border-color: var(--col-del);  background: var(--col-del-bg); }
+.btn-action.danger:hover { background: #fee2e2; transform: translate(-1px,-1px); box-shadow: 2px 2px 0 var(--col-del); }
 
 /* ─── EMPTY STATE ─── */
 .empty-state { text-align: center; padding: 80px 20px; }
@@ -1258,7 +1280,7 @@ function render() {
         ${notes ? `<div class="card-notes-text">${notes.replace(/<div class="card-notes-text">/,'').replace(/<\/div>/,'')}</div>` : ''}
         <div class="card-actions">
           <button class="btn-action edit" onclick="openEditModal('${p.id}')">✏ 編輯</button>
-          <button class="btn-action primary" onclick="openExport('${p.id}')">↗ 確認圖</button>
+          <button class="btn-action export" onclick="openExport('${p.id}')">↗ 確認圖</button>
           <button class="btn-action danger" onclick="deleteProject('${p.id}')">✕ 刪除</button>
         </div>
       </div>
