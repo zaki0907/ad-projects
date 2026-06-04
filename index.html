@@ -396,16 +396,8 @@ header {
   color: var(--black);
   flex: 1;
 }
-.ms-status {
-  font-family: var(--ff-body);
-  font-size: 10px;
-  padding: 3px 8px;
-  border: 1px solid;
-  letter-spacing: 0.04em;
-}
-.ms-status.done        { background: var(--black); color: var(--white); border-color: var(--black); }
-.ms-status.in-progress { background: var(--grey3); color: var(--white); border-color: var(--grey3); }
-.ms-status.upcoming    { background: var(--white); color: var(--grey3); border-color: var(--grey2); }
+.ms-status { display: none; }
+.ms-status.done { display: inline; font-family: var(--ff-body); font-size: 10px; font-weight: 700; padding: 3px 8px; border: 1px solid var(--black); background: var(--black); color: var(--white); }
 .ms-date {
   font-family: var(--ff-mono);
   font-size: 11px;
@@ -1147,7 +1139,6 @@ const PASSWORDS = { owner: 'admin123' };
 const MILESTONES_VIDEO = [
   { key: 'script_draft', name: '腳本初稿' },
   { key: 'script_final', name: '腳本定案' },
-  { key: 'shooting',     name: '影片拍攝' },
   { key: 'acopy',        name: 'A-Copy'   },
   { key: 'bcopy',        name: 'B-Copy'   },
   { key: 'copy',         name: '文案'     },
