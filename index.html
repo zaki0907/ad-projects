@@ -968,6 +968,14 @@ header {
 .pw-btn:active { transform: scale(0.98); }
 .pw-hint { font-family: var(--ff-body); font-size: 11px; color: var(--grey4); margin-top: 24px; line-height: 1.8; }
 .pw-hint strong { color: var(--grey3); font-weight: 700; }
+
+/* ── 全域字體強制覆蓋 ── */
+*, *::before, *::after {
+  font-family: 'Nunito', 'Zen Maru Gothic', sans-serif !important;
+}
+code, pre, .ff-mono, .ms-date, .ms-date-input, .card-num, .g-th, .cal-dn, .cal-head, .stat-value, .client-count, .contact-item-count {
+  font-family: 'DM Mono', monospace !important;
+}
 </style>
 </head>
 <body>
