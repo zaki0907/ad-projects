@@ -560,19 +560,26 @@ let currentFilter = 'all';
 const GS_URL = 'https://script.google.com/macros/s/AKfycbwmMmSIOeKQWK5XgpCtwNdapLaOpbTExsm0HBwqwR48B-i015j6f2pReIxoXIEgY0NYyA/exec';
 
 async function loadFromCloud() {
+  // 5 秒 timeout
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000));
   try {
-    const res = await fetch(GS_URL, { mode: 'cors' });
+    const res = await Promise.race([
+      fetch(GS_URL, { mode: 'cors' }),
+      timeout
+    ]);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
-    if (text && text !== 'Host not in allowlist') {
+    if (text && text.startsWith('[')) {
       projects = JSON.parse(text) || [];
+      localStorage.setItem('adProjects', JSON.stringify(projects));
+      return;
     }
   } catch(e) {
-    console.warn('雲端載入失敗，使用本地資料:', e.message);
-    // fallback 到 localStorage
-    const local = localStorage.getItem('adProjects');
-    if (local) projects = JSON.parse(local);
+    console.warn('雲端載入失敗:', e.message);
   }
+  // fallback 到 localStorage
+  const local = localStorage.getItem('adProjects');
+  if (local) try { projects = JSON.parse(local); } catch(e) {}
 }
 
 async function save() {
