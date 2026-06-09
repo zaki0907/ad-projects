@@ -361,48 +361,19 @@ header {
 #exportCanvas { display: block; max-width: 100%; border-radius: 6px; box-shadow: var(--shadow); }
 .export-footer { display: flex; gap: 8px; justify-content: flex-end; }
 
-/* ─── PASSWORD ─── */
-.pw-screen { position: fixed; inset: 0; background: var(--ink2); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px; }
-.pw-screen.hidden { display: none; }
-.pw-box { width: 100%; max-width: 360px; text-align: center; }
-.pw-wordmark { font-size: 2rem; font-weight: 900; color: #fff; letter-spacing: 0.04em; margin-bottom: 6px; }
-.pw-tagline { font-size: 0.88rem; color: rgba(255,255,255,0.45); margin-bottom: 32px; letter-spacing: 0.1em; }
-.pw-input { width: 100%; padding: 13px 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--r-sm); font-family: var(--font); font-size: 1rem; font-weight: 600; color: #fff; outline: none; text-align: center; letter-spacing: 0.14em; transition: all 0.2s; -webkit-appearance: none; }
-.pw-input:focus { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.12); }
-.pw-input::placeholder { color: rgba(255,255,255,0.25); letter-spacing: 0.08em; font-weight: 400; }
-.pw-btn { width: 100%; margin-top: 12px; padding: 13px; background: var(--accent); color: #fff; border: none; border-radius: var(--r-sm); font-family: var(--font); font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.15s; box-shadow: 0 3px 12px rgba(176,92,42,0.5); }
-.pw-btn:hover { background: var(--accent2); transform: translateY(-1px); }
-.pw-error { font-size: 0.82rem; font-weight: 600; color: #fca5a5; margin-top: 10px; min-height: 18px; }
-.pw-hint { font-size: 0.78rem; color: rgba(255,255,255,0.3); margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 18px; line-height: 1.8; }
-.pw-hint strong { color: rgba(255,255,255,0.5); }
+
 </style>
 </head>
 <body>
 
 
-<!-- 載入中 overlay -->
-<div id="loadingOverlay" style="display:none;position:fixed;inset:0;background:rgba(74,46,20,0.7);z-index:998;align-items:center;justify-content:center;flex-direction:column;gap:16px">
-  <div style="width:40px;height:40px;border:4px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite"></div>
-  <div style="color:#fff;font-family:'Noto Sans TC',sans-serif;font-size:1rem;font-weight:600">載入資料中…</div>
-</div>
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-<div class="pw-screen" id="pwScreen">
-  <div class="pw-box">
-    <div class="pw-wordmark">AD/PROJ</div>
-    <div class="pw-tagline">廣告案管理 · ZAKI</div>
-    <input class="pw-input" type="password" id="pwInput" placeholder="密碼" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    <div class="pw-error" id="pwError"></div>
-    <button class="pw-btn" onclick="doLogin()">進入</button>
-    <div class="pw-hint">預設密碼：<strong>admin123</strong><br>上線後請修改程式碼中的密碼</div>
-  </div>
-</div>
 
 <header>
   <div style="display:flex;align-items:center">
     <span class="logo-main">AD/PROJ</span>
     <span class="logo-sub">ZAKI</span>
   </div>
-  <button class="btn-logout" onclick="logout()">登出</button>
+
 </header>
 
 <div class="nav-bar">
@@ -513,7 +484,6 @@ header {
 
 
 
-const PASSWORDS = { owner: 'admin123' };
 
 // ── 專案配色 ──
 const PROJ_PALETTE = [
@@ -616,28 +586,17 @@ async function save() {
 }
 
 // 密碼
-async function doLogin() {
-  const v = document.getElementById('pwInput').value;
-  if (v === PASSWORDS.owner) {
-    currentRole = 'owner';
-    document.getElementById('pwScreen').classList.add('hidden');
-    document.getElementById('loadingOverlay').style.display = 'flex';
-    try {
-      await loadFromCloud();
-    } catch(e) {}
-    document.getElementById('loadingOverlay').style.display = 'none';
-    initYearSelect();
-    render();
-  } else {
-    document.getElementById('pwError').textContent = '密碼錯誤，請再試一次';
-  }
-}
-function logout() {
-  currentRole = null;
-  document.getElementById('pwInput').value = '';
-  document.getElementById('pwError').textContent = '';
-  document.getElementById('pwScreen').classList.remove('hidden');
-}
+
+
+
+// 頁面啟動：直接載入資料
+window.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  try { await loadFromCloud(); } catch(e) {}
+  document.getElementById('loadingOverlay').style.display = 'none';
+  initYearSelect();
+  render();
+});
 
 // 頁面切換
 function switchPage(name, el) {
