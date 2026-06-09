@@ -530,18 +530,17 @@ let currentFilter = 'all';
 const GS_URL = 'https://script.google.com/macros/s/AKfycbwmMmSIOeKQWK5XgpCtwNdapLaOpbTExsm0HBwqwR48B-i015j6f2pReIxoXIEgY0NYyA/exec';
 
 async function loadFromCloud() {
-  // 5 秒 timeout
-  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000));
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
   try {
     const res = await Promise.race([
-      fetch(GS_URL, { mode: 'cors' }),
+      fetch(GS_URL + '?t=' + Date.now()),
       timeout
     ]);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
-    if (text && text.startsWith('[')) {
+    if (text && text.trim().startsWith('[')) {
       projects = JSON.parse(text) || [];
       localStorage.setItem('adProjects', JSON.stringify(projects));
+      console.log('雲端載入成功，共', projects.length, '筆');
       return;
     }
   } catch(e) {
@@ -549,21 +548,24 @@ async function loadFromCloud() {
   }
   // fallback 到 localStorage
   const local = localStorage.getItem('adProjects');
-  if (local) try { projects = JSON.parse(local); } catch(e) {}
+  if (local) try { projects = JSON.parse(local); console.log('使用本地資料'); } catch(e) {}
 }
 
 async function save() {
-  // 同時存到 localStorage（本地備份）和雲端
+  // 先存本地備份
   localStorage.setItem('adProjects', JSON.stringify(projects));
+  // 再同步雲端
   try {
-    await fetch(GS_URL, {
+    const res = await fetch(GS_URL, {
       method: 'POST',
-      mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(projects)
     });
+    if (res.ok) {
+      console.log('雲端儲存成功');
+    }
   } catch(e) {
-    console.warn('雲端儲存失敗，已儲存至本地:', e.message);
+    console.warn('雲端儲存失敗，資料已存本地:', e.message);
   }
 }
 
