@@ -586,28 +586,6 @@ async function save() {
   }
 }
 
-;
-    if (_fileSha) body.sha = _fileSha;
-    const res = await fetch(GH_API, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${GH_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    _fileSha = data.content?.sha || _fileSha;
-  } catch(e) {
-    console.error('儲存失敗', e);
-    alert('儲存失敗，請檢查網路連線');
-  }
-}
-
-// 密碼
-
-
-
 // 頁面啟動：直接載入資料
 window.addEventListener('DOMContentLoaded', async () => {
   // 確保有 token
