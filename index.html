@@ -368,6 +368,23 @@ header {
 
 
 
+
+<!-- Token 輸入畫面 -->
+<div id="tokenScreen" style="display:none;position:fixed;inset:0;background:#4a2e14;z-index:997;align-items:center;justify-content:center;padding:20px;flex-direction:column;gap:16px">
+  <div style="text-align:center;color:#fff">
+    <div style="font-family:'Noto Sans TC',sans-serif;font-size:1.5rem;font-weight:900;margin-bottom:8px">AD/PROJ</div>
+    <div style="font-size:0.9rem;color:rgba(255,255,255,0.5);margin-bottom:28px">請輸入存取金鑰</div>
+    <input id="tokenInput" type="password" placeholder="存取金鑰"
+      style="width:280px;padding:12px 16px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);border-radius:8px;font-family:'Noto Sans TC',sans-serif;font-size:1rem;color:#fff;outline:none;display:block;margin:0 auto 12px;text-align:center"
+      onkeydown="if(event.key==='Enter')submitToken()">
+    <button onclick="submitToken()"
+      style="width:280px;padding:12px;background:#b05c2a;color:#fff;border:none;border-radius:8px;font-family:'Noto Sans TC',sans-serif;font-size:1rem;font-weight:700;cursor:pointer">
+      確認
+    </button>
+    <div id="tokenError" style="font-size:0.8rem;color:#fca5a5;margin-top:10px;min-height:18px"></div>
+    <div style="font-size:0.75rem;color:rgba(255,255,255,0.3);margin-top:20px;line-height:1.8">此金鑰只需輸入一次<br>之後會自動記住</div>
+  </div>
+</div>
 <header>
   <div style="display:flex;align-items:center">
     <span class="logo-main">AD/PROJ</span>
@@ -571,10 +588,23 @@ async function save() {
 }
 
 // ── 啟動 ──
+async function submitToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) { document.getElementById('tokenError').textContent = '請輸入金鑰'; return; }
+  localStorage.setItem('_ght', t);
+  _token = t;
+  document.getElementById('tokenScreen').style.display = 'none';
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  await loadFromCloud().catch(() => {});
+  document.getElementById('loadingOverlay').style.display = 'none';
+  initYearSelect();
+  render();
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   if (!localStorage.getItem('_ght')) {
-    const t = prompt('請輸入存取金鑰（只需輸入一次）：');
-    if (t && t.trim()) { localStorage.setItem('_ght', t.trim()); _token = t.trim(); }
+    document.getElementById('tokenScreen').style.display = 'flex';
+    return;
   }
   const overlay = document.getElementById('loadingOverlay');
   if (overlay) overlay.style.display = 'flex';
