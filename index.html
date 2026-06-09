@@ -544,12 +544,53 @@ const STATUS_LABELS = { ongoing:'進行中', completed:'已結案', pending:'待
 const STATUS_CLASSES = { ongoing:'s-ongoing', completed:'s-completed', pending:'s-pending', paused:'s-paused' };
 const MILESTONE_STATUS = { upcoming:'未開始', 'in-progress':'進行中', done:'已完成' };
 
-let projects = JSON.parse(localStorage.getItem('adProjects') || '[]');
+let projects = [];
 let currentRole = null;
 let editingId = null;
 let currentFilter = 'all';
 
-function save() { localStorage.setItem('adProjects', JSON.stringify(projects)); }
+// ── Google Sheets 雲端存取 ──
+const GS_URL = 'https://script.google.com/macros/s/AKfycbwmMmSIOeKQWK5XgpCtwNdapLaOpbTExsm0HBwqwR48B-i015j6f2pReIxoXIEgY0NYyA/exec';
+
+async function loadFromCloud() {
+  try {
+    const res = await fetch(GS_URL);
+    const text = await res.text();
+    projects = JSON.parse(text) || [];
+  } catch(e) {
+    console.error('載入失敗', e);
+    projects = [];
+  }
+}
+
+async function save() {
+  try {
+    await fetch(GS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(projects)
+    });
+  } catch(e) {
+    console.error('儲存失敗', e);
+  }
+};
+    if (_fileSha) body.sha = _fileSha;
+    const res = await fetch(GH_API, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${GH_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    _fileSha = data.content?.sha || _fileSha;
+  } catch(e) {
+    console.error('儲存失敗', e);
+    alert('儲存失敗，請檢查網路連線');
+  }
+}
 
 // 密碼
 function doLogin() {
@@ -557,8 +598,13 @@ function doLogin() {
   if (v === PASSWORDS.owner) {
     currentRole = 'owner';
     document.getElementById('pwScreen').classList.add('hidden');
-    initYearSelect();
-    render();
+    document.getElementById('pwError').textContent = '載入資料中…';
+    document.getElementById('pwError').style.color = 'rgba(255,255,255,0.5)';
+    loadFromCloud().then(() => {
+      document.getElementById('pwError').textContent = '';
+      initYearSelect();
+      render();
+    });
   } else {
     document.getElementById('pwError').textContent = '密碼錯誤，請再試一次';
   }
@@ -791,7 +837,7 @@ function openEditModal(id) {
 
 function closeModal() { document.getElementById('modal').classList.add('hidden'); }
 
-function saveProject() {
+async function saveProject() {
   const name = document.getElementById('fName').value.trim();
   if (!name) { alert('請輸入品牌名稱 / 案名'); return; }
 
@@ -823,15 +869,15 @@ function saveProject() {
   } else {
     projects.push({ id: Date.now().toString(), created: new Date().toLocaleDateString('zh-TW'), ...data });
   }
-  save();
+  await save();
   closeModal();
   render();
 }
 
-function deleteProject(id) {
+async function deleteProject(id) {
   if (!confirm('確定要刪除這個案子嗎？')) return;
   projects = projects.filter(x=>x.id!==id);
-  save();
+  await save();
   render();
 }
 // ── 產出確認圖 ──
@@ -1233,25 +1279,6 @@ function calSelectDay(ds) {
 }
 
 
-// 示範資料
-if (!projects.length) {
-  projects = [
-    {
-      id:'1', name:'Nike 夏季形象廣告', owner:'小明', status:'ongoing',
-      year:2025, created:'2025/01/15', client:'Nike Taiwan', contact:'陳小姐',
-      hasPhoto:true, notes:'預算 NT$200,000',
-      milestones:{
-        script_draft:{ status:'done', date:'2025-01-20' },
-        script_final:{ status:'done', date:'2025-01-28' },
-        shooting:    { status:'done', date:'2025-02-05' },
-        acopy:       { status:'in-progress', date:'2025-02-18' },
-        bcopy:       { status:'upcoming', date:'' },
-        copy:        { status:'upcoming', date:'' },
-        release:     { status:'upcoming', date:'2025-03-01' },
-        photo_acopy:    { status:'in-progress', date:'2025-02-20' },
-        photo_bcopy:     { status:'upcoming', date:'' },
-        photo_delivery:  { status:'upcoming', date:'2025-03-01' },
-      }
     },
     {
       id:'2', name:'統一企業 過年促銷影片', owner:'小明', status:'completed',
