@@ -537,7 +537,9 @@ async function loadFromCloud() {
     if (res.status === 404) { projects = []; return; }
     const d = await res.json();
     _dataSha = d.sha;
-    projects = JSON.parse(atob(d.content.replace(/\n/g, '')));
+    const raw = atob(d.content.replace(/\n/g, ''));
+    const bytes2 = Uint8Array.from(raw, c => c.charCodeAt(0));
+    projects = JSON.parse(new TextDecoder().decode(bytes2));
     localStorage.setItem('adProjects', JSON.stringify(projects));
   } catch(e) {
     const local = localStorage.getItem('adProjects');
@@ -550,7 +552,10 @@ async function save() {
   const t = getToken();
   if (!t) return;
   try {
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(projects, null, 2))));
+    const json = JSON.stringify(projects, null, 2);
+    const bytes = new TextEncoder().encode(json);
+    const binStr = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+    const content = btoa(binStr);
     const body = { message: 'update', content };
     if (_dataSha) body.sha = _dataSha;
     const res = await fetch(`https://api.github.com/repos/${DATA_REPO}/contents/${DATA_FILE}`, {
