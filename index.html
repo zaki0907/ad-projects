@@ -481,28 +481,6 @@ header {
 
 
 <script>
-
-
-
-
-// ── 專案配色 ──
-const PROJ_PALETTE = [
-  '#e07b54','#5b8dd9','#52a882','#c97bb2','#e0a030',
-  '#7b7fd4','#4fb3c8','#d45f5f','#85b35c','#b07d4a'
-];
-function getProjectColor(projId) {
-  // 用 id 的數字取模，讓每個專案有固定顏色
-  const num = parseInt(projId.replace(/\D/g,'')) || 0;
-  return PROJ_PALETTE[num % PROJ_PALETTE.length];
-}
-function hexToRgba(hex, alpha) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-
 const MILESTONES_VIDEO = [
   { key: 'script_draft', name: '腳本初稿' },
   { key: 'script_final', name: '腳本定案' },
@@ -516,118 +494,112 @@ const MILESTONES_PHOTO = [
   { key: 'photo_bcopy',    name: 'B-Copy' },
   { key: 'photo_delivery', name: '交檔'   },
 ];
-
-const STATUS_LABELS = { ongoing:'進行中', completed:'已結案', pending:'待確認', paused:'暫停' };
+const STATUS_LABELS  = { ongoing:'進行中', completed:'已結案', pending:'待確認', paused:'暫停' };
 const STATUS_CLASSES = { ongoing:'s-ongoing', completed:'s-completed', pending:'s-pending', paused:'s-paused' };
 const MILESTONE_STATUS = { upcoming:'未開始', 'in-progress':'進行中', done:'已完成' };
+const PROJ_PALETTE = ['#c0622a','#2563a8','#1e7a44','#a0448a','#b07820','#5040b0','#1878a0','#a83030','#4a8820','#885020'];
 
+function getProjectColor(id) {
+  const n = parseInt(String(id).replace(/\D/g,'')) || 0;
+  return PROJ_PALETTE[n % PROJ_PALETTE.length];
+}
+function hexToRgba(hex, a) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ── 資料 ──
 let projects = [];
 let editingId = null;
 let currentFilter = 'all';
 
-// ── GitHub 資料庫 ──
 const DATA_REPO = 'zaki0907/ad-proj-data';
 const DATA_FILE = 'projects.json';
-const CFG_FILE  = 'config.json';
-let _ghToken = null;
+let _token = null;
 let _dataSha = null;
 
-async function getToken() {
-  if (_ghToken) return _ghToken;
-  // 從 private repo 讀 config（需要用 localStorage 暫存 token bootstrap）
-  _ghToken = localStorage.getItem('_ght');
-  return _ghToken;
+function getToken() {
+  if (!_token) _token = localStorage.getItem('_ght') || null;
+  return _token;
 }
 
 async function loadFromCloud() {
-  const token = await getToken();
-  if (!token) { 
+  const t = getToken();
+  if (!t) {
     const local = localStorage.getItem('adProjects');
-    if (local) projects = JSON.parse(local);
+    if (local) try { projects = JSON.parse(local); } catch(e) {}
     return;
   }
   try {
     const res = await fetch(`https://api.github.com/repos/${DATA_REPO}/contents/${DATA_FILE}`, {
-      headers: { 'Authorization': `token ${token}` }
+      headers: { Authorization: `token ${t}` }
     });
     if (res.status === 404) { projects = []; return; }
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    _dataSha = data.sha;
-    projects = JSON.parse(atob(data.content.replace(/\n/g,'')));
+    const d = await res.json();
+    _dataSha = d.sha;
+    projects = JSON.parse(atob(d.content.replace(/\n/g, '')));
     localStorage.setItem('adProjects', JSON.stringify(projects));
   } catch(e) {
-    console.warn('雲端載入失敗:', e.message);
     const local = localStorage.getItem('adProjects');
-    if (local) projects = JSON.parse(local);
+    if (local) try { projects = JSON.parse(local); } catch(e2) {}
   }
 }
 
 async function save() {
   localStorage.setItem('adProjects', JSON.stringify(projects));
-  const token = await getToken();
-  if (!token) return;
+  const t = getToken();
+  if (!t) return;
   try {
     const content = btoa(unescape(encodeURIComponent(JSON.stringify(projects, null, 2))));
     const body = { message: 'update', content };
     if (_dataSha) body.sha = _dataSha;
     const res = await fetch(`https://api.github.com/repos/${DATA_REPO}/contents/${DATA_FILE}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `token ${token}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { Authorization: `token ${t}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    const data = await res.json();
-    if (data.content) _dataSha = data.content.sha;
+    const d = await res.json();
+    if (d.content) _dataSha = d.content.sha;
   } catch(e) {
-    console.warn('雲端儲存失敗:', e.message);
+    console.warn('save failed:', e.message);
   }
 }
 
-// 頁面啟動：直接載入資料
+// ── 啟動 ──
 window.addEventListener('DOMContentLoaded', async () => {
-  // 確保有 token
   if (!localStorage.getItem('_ght')) {
     const t = prompt('請輸入存取金鑰（只需輸入一次）：');
-    if (t && t.trim()) {
-      localStorage.setItem('_ght', t.trim());
-      _ghToken = t.trim();
-    }
-  } else {
-    _ghToken = localStorage.getItem('_ght');
+    if (t && t.trim()) { localStorage.setItem('_ght', t.trim()); _token = t.trim(); }
   }
-  document.getElementById('loadingOverlay').style.display = 'flex';
-  try { await loadFromCloud(); } catch(e) {}
-  document.getElementById('loadingOverlay').style.display = 'none';
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) overlay.style.display = 'flex';
+  await loadFromCloud().catch(() => {});
+  if (overlay) overlay.style.display = 'none';
   initYearSelect();
   render();
 });
 
-// 頁面切換
+// ── 頁面切換 ──
 function switchPage(name, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   el.classList.add('active');
-  if (name === 'clients') { initYearSelect(); renderClients(); }
-  if (name === 'gantt') { renderGantt(); }
+  if (name === 'clients')  { initYearSelect(); renderClients(); }
+  if (name === 'gantt')    { renderGantt(); }
   if (name === 'calendar') { renderCalendar(); }
 }
 
-// 年份選單
 function initYearSelect() {
   const sel = document.getElementById('yearSelect');
-  const years = [...new Set(projects.map(p => p.year || new Date(p.created||'').getFullYear() || new Date().getFullYear()))].sort((a,b)=>b-a);
   const cur = new Date().getFullYear();
+  const years = [...new Set(projects.map(p => p.year || cur))].sort((a,b) => b-a);
   if (!years.includes(cur)) years.unshift(cur);
   const prev = sel.value;
-  sel.innerHTML = years.map(y => `<option value="${y}" ${y==prev?'selected':''}>${y} 年</option>`).join('');
+  sel.innerHTML = years.map(y => `<option value="${y}"${y==prev?' selected':''}>${y} 年</option>`).join('');
   if (!sel.value) sel.value = cur;
 }
 
-// 篩選
 function setFilter(f, el) {
   currentFilter = f;
   document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
@@ -635,67 +607,51 @@ function setFilter(f, el) {
   render();
 }
 
-// 渲染案子列表
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function render() {
   const filtered = currentFilter === 'all' ? projects : projects.filter(p => p.status === currentFilter);
-  document.getElementById('countOngoing').textContent = projects.filter(p=>p.status==='ongoing').length;
-  document.getElementById('countDone').textContent = projects.filter(p=>p.status==='completed').length;
-  document.getElementById('countPending').textContent = projects.filter(p=>p.status==='pending').length;
-  document.getElementById('countTotal').textContent = projects.length;
+  document.getElementById('countOngoing').textContent  = projects.filter(p=>p.status==='ongoing').length;
+  document.getElementById('countDone').textContent     = projects.filter(p=>p.status==='completed').length;
+  document.getElementById('countPending').textContent  = projects.filter(p=>p.status==='pending').length;
+  document.getElementById('countTotal').textContent    = projects.length;
 
   const grid = document.getElementById('projectsGrid');
   if (!filtered.length) {
-    grid.innerHTML = `<div class="empty-state"><span class="empty-icon">空</span><div class="empty-text">目前沒有符合的案子</div></div>`;
+    grid.innerHTML = `<div class="empty-state"><span class="empty-icon">—</span><div class="empty-text">目前沒有案子</div></div>`;
     return;
   }
-
   grid.innerHTML = filtered.map((p, i) => {
-    const icons = { upcoming:'○', 'in-progress':'◑', done:'●' };
-
-    const stLabel = {done:'已完成','in-progress':'進行中',upcoming:'未開始'};
-    const videoMs = MILESTONES_VIDEO.map(m => {
+    const stLabel = { done:'已完成', 'in-progress':'進行中', upcoming:'未開始' };
+    const mkMs = (defs) => defs.map(m => {
       const ms = p.milestones?.[m.key] || {};
       const st = ms.status || 'upcoming';
-      return `<div class="ms-row"><span class="ms-dot ${st}"></span><span class="ms-name">${m.name}</span><span class="ms-status ${st}">${stLabel[st]}</span><span class="ms-date ${ms.date?'':'empty'}">${ms.date||'—'}</span></div>`;
+      return `<div class="ms-row"><span class="ms-dot ${st}"></span><span class="ms-name">${m.name}</span><span class="ms-status ${st}">${stLabel[st]}</span><span class="ms-date${ms.date?'':' empty'}">${ms.date||'—'}</span></div>`;
     }).join('');
-
-    const photoMs = p.hasPhoto ? MILESTONES_PHOTO.map(m => {
-      const ms = p.milestones?.[m.key] || {};
-      const st = ms.status || 'upcoming';
-      return `<div class="ms-row"><span class="ms-dot ${st}"></span><span class="ms-name">${m.name}</span><span class="ms-status ${st}">${stLabel[st]}</span><span class="ms-date ${ms.date?'':'empty'}">${ms.date||'—'}</span></div>`;
-    }).join('') : '';
-
     const tags = [
-      p.client ? `<span class="tag tag-client">${escHtml(p.client)}</span>` : '',
+      p.client  ? `<span class="tag tag-client">${escHtml(p.client)}</span>`   : '',
       p.contact ? `<span class="tag tag-contact">${escHtml(p.contact)}</span>` : '',
-      p.hasPhoto ? `<span class="tag tag-photo">含照片</span>` : '',
+      p.hasPhoto ? `<span class="tag tag-photo">含照片</span>`                  : '',
     ].filter(Boolean).join('');
-
-    const notes = escHtml(p.notes||'');
-
     return `<div class="project-card" id="card-${p.id}">
       <div class="card-header" onclick="toggleCard('${p.id}')">
         <div class="card-num">${String(i+1).padStart(2,'0')}</div>
         <div class="card-main">
           <div class="card-title">${escHtml(p.name)}</div>
-          <div class="card-meta">
-            <span>負責人：${escHtml(p.owner||'—')}</span>
-            <span>建立：${p.created||'—'}</span>
-          </div>
+          <div class="card-meta"><span>負責人：${escHtml(p.owner||'—')}</span><span>建立：${p.created||'—'}</span></div>
         </div>
         <span class="status-pill ${STATUS_CLASSES[p.status]}">${STATUS_LABELS[p.status]}</span>
-        <span class="card-toggle" id="toggle-${p.id}">▾</span>
+        <span class="card-chevron" id="chv-${p.id}">▾</span>
       </div>
       <div class="card-body" id="body-${p.id}">
         ${tags ? `<div class="card-tags">${tags}</div>` : ''}
-        <div class="ms-section">
-          <div class="ms-section-label">影片節點</div>
-          ${videoMs}
-        </div>
-        ${p.hasPhoto ? `<div class="ms-section"><div class="ms-section-label">照片節點</div>${photoMs}</div>` : ''}
-        ${notes ? `<div class="card-notes-text">${notes.replace(/<div class="card-notes-text">/,'').replace(/<\/div>/,'')}</div>` : ''}
+        <div class="ms-section"><div class="ms-section-label">影片節點</div>${mkMs(MILESTONES_VIDEO)}</div>
+        ${p.hasPhoto ? `<div class="ms-section"><div class="ms-section-label">照片節點</div>${mkMs(MILESTONES_PHOTO)}</div>` : ''}
+        ${p.notes ? `<div class="card-notes-text">${escHtml(p.notes)}</div>` : ''}
         <div class="card-actions">
-          <button class="btn-action edit" onclick="openEditModal('${p.id}')">✏ 編輯</button>
+          <button class="btn-action edit"   onclick="openEditModal('${p.id}')">✏ 編輯</button>
           <button class="btn-action export" onclick="openExport('${p.id}')">↗ 確認圖</button>
           <button class="btn-action danger" onclick="deleteProject('${p.id}')">✕ 刪除</button>
         </div>
@@ -706,71 +662,38 @@ function render() {
 
 function toggleCard(id) {
   document.getElementById('body-'+id).classList.toggle('open');
-  document.getElementById('toggle-'+id).classList.toggle('open');
-}
-function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  document.getElementById('chv-'+id).classList.toggle('open');
 }
 
-// 渲染客戶統計
 function renderClients() {
   const year = parseInt(document.getElementById('yearSelect').value);
-  const inYear = projects.filter(p => (p.year || new Date(p.created||'').getFullYear()) == year);
-
+  const inYear = projects.filter(p => (p.year || new Date().getFullYear()) == year);
   const container = document.getElementById('clientCards');
   if (!inYear.length) {
-    container.innerHTML = `<div class="empty-state"><span class="empty-icon">空</span><div class="empty-text">${year} 年尚無案子資料</div></div>`;
+    container.innerHTML = `<div class="empty-state"><span class="empty-icon">—</span><div class="empty-text">${year} 年尚無資料</div></div>`;
     return;
   }
-
-  // 以公司分組
   const byClient = {};
-  inYear.forEach(p => {
-    const c = p.client || '（未填寫公司）';
-    if (!byClient[c]) byClient[c] = [];
-    byClient[c].push(p);
-  });
-
-  // 依案量排序
-  const sorted = Object.entries(byClient).sort((a,b) => b[1].length - a[1].length);
-
-  container.innerHTML = sorted.map(([client, ps]) => {
-    // 以窗口分組
+  inYear.forEach(p => { const c = p.client||'未填寫'; if (!byClient[c]) byClient[c]=[]; byClient[c].push(p); });
+  container.innerHTML = Object.entries(byClient).sort((a,b)=>b[1].length-a[1].length).map(([client, ps]) => {
     const byContact = {};
-    ps.forEach(p => {
-      const ct = p.contact || '（未填寫窗口）';
-      if (!byContact[ct]) byContact[ct] = [];
-      byContact[ct].push(p);
-    });
-
-    const contactRows = Object.entries(byContact).map(([contact, cps]) =>
-      `<div class="contact-item">
-        <div class="contact-item-left">
-          <div class="contact-person">${escHtml(contact)}</div>
-          <div class="contact-projs">${cps.map(p=>escHtml(p.name)).join('、')}</div>
-        </div>
-        <div class="contact-item-count">${cps.length} 件</div>
-      </div>`
-    ).join('');
-
+    ps.forEach(p => { const c = p.contact||'未填寫'; if (!byContact[c]) byContact[c]=[]; byContact[c].push(p); });
     return `<div class="client-card">
-      <div class="client-card-top">
-        <div class="client-name">${escHtml(client)}</div>
-        <div class="client-count">${ps.length} 件</div>
+      <div class="client-card-top"><div class="client-name">${escHtml(client)}</div><div class="client-count">${ps.length} 件</div></div>
+      <div class="contact-items">${Object.entries(byContact).map(([ct,cps])=>`
+        <div class="contact-item">
+          <div class="contact-item-left"><div class="contact-person">${escHtml(ct)}</div><div class="contact-projs">${cps.map(p=>escHtml(p.name)).join('、')}</div></div>
+          <div class="contact-item-count">${cps.length} 件</div>
+        </div>`).join('')}
       </div>
-      <div class="contact-items">${contactRows}</div>
     </div>`;
   }).join('');
 }
 
-// Modal
 function buildMsForm(defs, existing) {
   return defs.map(m => {
     const ms = existing?.[m.key] || {};
-    return `<div class="ms-form-row">
-      <span class="ms-form-name">${m.name}</span>
-      <input class="ms-date-input" type="date" id="ms_dt_${m.key}" value="${ms.date||''}">
-    </div>`;
+    return `<div class="ms-form-row"><span class="ms-form-name">${m.name}</span><input class="ms-date-input" type="date" id="ms_dt_${m.key}" value="${ms.date||''}"></div>`;
   }).join('');
 }
 
@@ -780,21 +703,16 @@ function updateClientDatalist() {
 }
 
 function togglePhotoSection() {
-  const show = document.getElementById('fHasPhoto').checked;
-  document.getElementById('photoSection').style.display = show ? 'block' : 'none';
+  document.getElementById('photoSection').style.display = document.getElementById('fHasPhoto').checked ? 'block' : 'none';
 }
 
 function openModal() {
   editingId = null;
   document.getElementById('modalTitle').textContent = '新增廣告案';
-  document.getElementById('fName').value = '';
-  document.getElementById('fOwner').value = '';
+  ['fName','fOwner','fClient','fContact','fNotes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fStatus').value = 'ongoing';
   document.getElementById('fYear').value = new Date().getFullYear();
-  document.getElementById('fClient').value = '';
-  document.getElementById('fContact').value = '';
   document.getElementById('fHasPhoto').checked = false;
-  document.getElementById('fNotes').value = '';
   document.getElementById('photoSection').style.display = 'none';
   document.getElementById('milestonesVideoForm').innerHTML = buildMsForm(MILESTONES_VIDEO, {});
   document.getElementById('milestonesPhotoForm').innerHTML = buildMsForm(MILESTONES_PHOTO, {});
@@ -804,18 +722,18 @@ function openModal() {
 }
 
 function openEditModal(id) {
-  const p = projects.find(x=>x.id===id);
+  const p = projects.find(x => x.id === id);
   if (!p) return;
   editingId = id;
   document.getElementById('modalTitle').textContent = '編輯廣告案';
-  document.getElementById('fName').value = p.name;
-  document.getElementById('fOwner').value = p.owner||'';
-  document.getElementById('fStatus').value = p.status;
-  document.getElementById('fYear').value = p.year || new Date().getFullYear();
-  document.getElementById('fClient').value = p.client||'';
-  document.getElementById('fContact').value = p.contact||'';
+  document.getElementById('fName').value    = p.name;
+  document.getElementById('fOwner').value   = p.owner   || '';
+  document.getElementById('fStatus').value  = p.status;
+  document.getElementById('fYear').value    = p.year    || new Date().getFullYear();
+  document.getElementById('fClient').value  = p.client  || '';
+  document.getElementById('fContact').value = p.contact || '';
   document.getElementById('fHasPhoto').checked = !!p.hasPhoto;
-  document.getElementById('fNotes').value = p.notes||'';
+  document.getElementById('fNotes').value   = p.notes   || '';
   document.getElementById('photoSection').style.display = p.hasPhoto ? 'block' : 'none';
   document.getElementById('milestonesVideoForm').innerHTML = buildMsForm(MILESTONES_VIDEO, p.milestones||{});
   document.getElementById('milestonesPhotoForm').innerHTML = buildMsForm(MILESTONES_PHOTO, p.milestones||{});
@@ -828,32 +746,28 @@ function closeModal() { document.getElementById('modal').classList.add('hidden')
 
 async function saveProject() {
   const name = document.getElementById('fName').value.trim();
-  if (!name) { alert('請輸入品牌名稱 / 案名'); return; }
-
-  const milestones = {};
+  if (!name) { alert('請輸入品牌名稱'); return; }
   const today = new Date().toISOString().slice(0,10);
+  const milestones = {};
   [...MILESTONES_VIDEO, ...MILESTONES_PHOTO].forEach(m => {
-    const dtEl = document.getElementById('ms_dt_'+m.key);
-    if (!dtEl) return;
-    const date = dtEl.value;
-    const status = !date ? 'upcoming' : date <= today ? 'done' : 'upcoming';
-    milestones[m.key] = { status, date };
+    const el = document.getElementById('ms_dt_' + m.key);
+    if (!el) return;
+    const date = el.value;
+    milestones[m.key] = { status: !date ? 'upcoming' : date <= today ? 'done' : 'upcoming', date };
   });
-
   const data = {
     name,
-    owner: document.getElementById('fOwner').value.trim(),
-    status: document.getElementById('fStatus').value,
-    year: parseInt(document.getElementById('fYear').value) || new Date().getFullYear(),
-    client: document.getElementById('fClient').value.trim(),
-    contact: document.getElementById('fContact').value.trim(),
+    owner:    document.getElementById('fOwner').value.trim(),
+    status:   document.getElementById('fStatus').value,
+    year:     parseInt(document.getElementById('fYear').value) || new Date().getFullYear(),
+    client:   document.getElementById('fClient').value.trim(),
+    contact:  document.getElementById('fContact').value.trim(),
     hasPhoto: document.getElementById('fHasPhoto').checked,
-    notes: document.getElementById('fNotes').value.trim(),
+    notes:    document.getElementById('fNotes').value.trim(),
     milestones,
   };
-
   if (editingId) {
-    const idx = projects.findIndex(x=>x.id===editingId);
+    const idx = projects.findIndex(x => x.id === editingId);
     projects[idx] = { ...projects[idx], ...data };
   } else {
     projects.push({ id: Date.now().toString(), created: new Date().toLocaleDateString('zh-TW'), ...data });
@@ -865,460 +779,205 @@ async function saveProject() {
 
 async function deleteProject(id) {
   if (!confirm('確定要刪除這個案子嗎？')) return;
-  projects = projects.filter(x=>x.id!==id);
+  projects = projects.filter(x => x.id !== id);
   await save();
   render();
 }
-// ── 產出確認圖 ──
-let exportProjectId = null;
-
-function openExport(id) {
-  exportProjectId = id;
-  const p = projects.find(x => x.id === id);
-  if (!p) return;
-  document.getElementById('exportOverlay').classList.remove('hidden');
-  drawExportCanvas(p);
-}
-function closeExport() {
-  document.getElementById('exportOverlay').classList.add('hidden');
-}
-function downloadExport() {
-  const canvas = document.getElementById('exportCanvas');
-  const a = document.createElement('a');
-  a.download = '時間節點確認_' + (exportProjectId ? (projects.find(x=>x.id===exportProjectId)?.name||'專案') : '專案') + '.png';
-  a.href = canvas.toDataURL('image/png');
-  a.click();
-}
-
-function drawExportCanvas(p) {
-  const canvas = document.getElementById('exportCanvas');
-  const DPR = 2;
-  const W = 500;
-  const allMs = [...MILESTONES_VIDEO, ...(p.hasPhoto ? MILESTONES_PHOTO : [])];
-  const msData = allMs.map(m => ({
-    name: m.name, isPhoto: m.key.startsWith('photo_'),
-    date: p.milestones?.[m.key]?.date || '',
-    status: p.milestones?.[m.key]?.status || 'upcoming',
-  }));
-  const videoMs = msData.filter(m => !m.isPhoto);
-  const photoMs = msData.filter(m => m.isPhoto);
-  const PADDING = 28;
-  const ROW_H = 40;
-  const HEADER_H = 100;
-  let H = HEADER_H + PADDING;
-  H += 20 + videoMs.length * ROW_H;
-  if (photoMs.length) H += 32 + 20 + photoMs.length * ROW_H;
-  H += 50 + PADDING;
-  canvas.width = W * DPR; canvas.height = H * DPR;
-  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.scale(DPR, DPR);
-  ctx.imageSmoothingEnabled = false;
-
-  // BG
-  ctx.fillStyle = '#fdf6ee';
-  ctx.fillRect(0, 0, W, H);
-
-  // pixel grid
-  ctx.strokeStyle = 'rgba(100,60,20,0.06)';
-  ctx.lineWidth = 0.5;
-  for (let gx = 0; gx < W; gx += 8) { ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,H); ctx.stroke(); }
-  for (let gy = 0; gy < H; gy += 8) { ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke(); }
-
-  // top border bar (pixel dashes)
-  ctx.fillStyle = '#000000';
-  for (let x = 0; x < W; x += 16) ctx.fillRect(x, 0, 8, 6);
-
-  let y = 20;
-
-  // Project title
-  ctx.fillStyle = '#000000';
-  ctx.font = '800 18px "Nunito", sans-serif';
-  ctx.fillText(truncate(ctx, p.name, W - PADDING*2), PADDING, y + 18);
-  y += 28;
-
-  // tags
-  ctx.font = '700 11px "Nunito", sans-serif';
-  let tx = PADDING;
-  if (p.client) {
-    const lbl = p.client;
-    const tw = ctx.measureText(lbl).width;
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(tx, y, tw + 16, 20);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(lbl, tx + 8, y + 14);
-    tx += tw + 22;
-  }
-  if (p.contact) {
-    const lbl = p.contact;
-    const tw = ctx.measureText(lbl).width;
-    ctx.fillStyle = '#444444';
-    ctx.fillRect(tx, y, tw + 16, 20);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(lbl, tx + 8, y + 14);
-  }
-  y += 30;
-
-  // divider (dashed)
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([8, 4]);
-  ctx.beginPath(); ctx.moveTo(PADDING, y); ctx.lineTo(W - PADDING, y); ctx.stroke();
-  ctx.setLineDash([]);
-  y += 16;
-
-  function drawSection(title, items) {
-    // section title
-    ctx.font = '700 10px "DM Mono", monospace';
-    ctx.fillStyle = '#888888';
-    ctx.fillText(title.toUpperCase(), PADDING, y + 10);
-    y += 20;
-
-    items.forEach((m, i) => {
-      const rowY = y + i * ROW_H;
-      // alternating row bg
-      if (i % 2 === 0) { ctx.fillStyle = '#f2f2f2'; ctx.fillRect(PADDING, rowY, W - PADDING*2, ROW_H - 4); }
-
-      // dot
-      const dotSize = 8;
-      const dotX = PADDING + 8;
-      const dotY = rowY + (ROW_H - 4)/2 - dotSize/2;
-      if (m.status === 'done') {
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(dotX, dotY, dotSize, dotSize);
-      } else if (m.status === 'in-progress') {
-        ctx.fillStyle = '#888888';
-        ctx.fillRect(dotX, dotY, dotSize, dotSize);
-        ctx.strokeStyle = '#000000'; ctx.lineWidth = 1;
-        ctx.strokeRect(dotX - 2, dotY - 2, dotSize + 4, dotSize + 4);
-      } else {
-        ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 1.5;
-        ctx.strokeRect(dotX, dotY, dotSize, dotSize);
-      }
-
-      // name
-      ctx.font = '700 13px "Nunito", sans-serif';
-      ctx.fillStyle = '#000000';
-      ctx.fillText(m.name, PADDING + 24, rowY + ROW_H/2 + 4);
-
-      // status badge
-      const stLabel = m.status==='done'?'已完成': m.status==='in-progress'?'進行中':'未開始';
-      ctx.font = '800 9px "Nunito", sans-serif';
-      const sw = ctx.measureText(stLabel).width;
-      const badgeBg = m.status==='done'?'#000000': m.status==='in-progress'?'#444444':'#ffffff';
-      const badgeFg = m.status==='upcoming'?'#888888':'#ffffff';
-      const badgeBorder = m.status==='upcoming'?'#cccccc':badgeBg;
-      const bx = W - PADDING - (m.date ? ctx.measureText(m.date).width + 16 : 12) - sw - 22;
-      ctx.fillStyle = badgeBg;
-      ctx.fillRect(bx, rowY + ROW_H/2 - 9, sw + 14, 17);
-      if (m.status === 'upcoming') { ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 1; ctx.strokeRect(bx, rowY + ROW_H/2 - 9, sw + 14, 17); }
-      ctx.fillStyle = badgeFg;
-      ctx.fillText(stLabel, bx + 7, rowY + ROW_H/2 + 4);
-
-      // date
-      ctx.font = '500 11px "DM Mono", monospace';
-      ctx.textAlign = 'right';
-      if (m.date) { ctx.fillStyle = '#444444'; ctx.fillText(m.date, W - PADDING, rowY + ROW_H/2 + 4); }
-      else { ctx.fillStyle = '#cccccc'; ctx.fillText('TBD', W - PADDING, rowY + ROW_H/2 + 4); }
-      ctx.textAlign = 'left';
-
-      // row divider
-      if (i < items.length - 1) {
-        ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 0.5; ctx.setLineDash([]);
-        ctx.beginPath(); ctx.moveTo(PADDING + 20, rowY + ROW_H - 2); ctx.lineTo(W - PADDING, rowY + ROW_H - 2); ctx.stroke();
-      }
-    });
-    y += items.length * ROW_H + 4;
-  }
-
-  drawSection('影片節點', videoMs);
-  if (photoMs.length) {
-    y += 10;
-    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.setLineDash([8,4]);
-    ctx.beginPath(); ctx.moveTo(PADDING, y); ctx.lineTo(W-PADDING, y); ctx.stroke();
-    ctx.setLineDash([]); y += 18;
-    drawSection('照片節點', photoMs);
-  }
-
-  // footer
-  y += 8;
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.setLineDash([]);
-  ctx.beginPath(); ctx.moveTo(PADDING, y); ctx.lineTo(W-PADDING, y); ctx.stroke();
-  y += 14;
-  ctx.font = '500 10px "DM Mono", monospace';
-  ctx.fillStyle = '#888888';
-  const today = new Date().toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'});
-  ctx.fillText(today, PADDING, y + 10);
-  ctx.textAlign = 'right';
-  ctx.fillText('早起上班的 ZAKI', W - PADDING, y + 10);
-  ctx.textAlign = 'left';
-
-  // bottom pixel dashes
-  ctx.fillStyle = '#000000';
-  for (let x = 0; x < W; x += 16) ctx.fillRect(x, H - 6, 8, 6);
-}
-
-
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x+r, y);
-  ctx.lineTo(x+w-r, y);
-  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
-  ctx.lineTo(x+w, y+h-r);
-  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-  ctx.lineTo(x+r, y+h);
-  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
-  ctx.lineTo(x, y+r);
-  ctx.quadraticCurveTo(x, y, x+r, y);
-  ctx.closePath();
-}
-
-function truncate(ctx, text, maxW) {
-  if (ctx.measureText(text).width <= maxW) return text;
-  while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0,-1);
-  return text + '…';
-}
 
 // ── 甘特圖 ──
-let ganttYear = new Date().getFullYear();
-let ganttMonth = new Date().getMonth(); // 0-indexed
-
-function ganttPrevMonth() { ganttMonth--; if(ganttMonth<0){ganttMonth=11;ganttYear--;} renderGantt(); }
-function ganttNextMonth() { ganttMonth++; if(ganttMonth>11){ganttMonth=0;ganttYear++;} renderGantt(); }
-function ganttGoToday() { ganttYear=new Date().getFullYear(); ganttMonth=new Date().getMonth(); renderGantt(); }
+let ganttYear = new Date().getFullYear(), ganttMonth = new Date().getMonth();
+function ganttPrevMonth() { if(--ganttMonth<0){ganttMonth=11;ganttYear--;} renderGantt(); }
+function ganttNextMonth() { if(++ganttMonth>11){ganttMonth=0;ganttYear++;} renderGantt(); }
+function ganttGoToday()   { ganttYear=new Date().getFullYear(); ganttMonth=new Date().getMonth(); renderGantt(); }
 
 function renderGantt() {
-  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  document.getElementById('ganttMonthLabel').textContent = ganttYear + ' 年 ' + monthNames[ganttMonth];
-
-  const daysInMonth = new Date(ganttYear, ganttMonth+1, 0).getDate();
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0,10);
+  const mn = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  document.getElementById('ganttMonthLabel').textContent = `${ganttYear} 年 ${mn[ganttMonth]}`;
+  const days = new Date(ganttYear, ganttMonth+1, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
   const allMs = [...MILESTONES_VIDEO, ...MILESTONES_PHOTO];
-
-  // 只顯示非已結案
-  const active = projects.filter(p => p.status !== 'completed' || p.milestones && Object.values(p.milestones).some(m => m.date && m.date.startsWith(ganttYear+'-'+String(ganttMonth+1).padStart(2,'0'))));
-
   const table = document.getElementById('ganttTable');
-
-  // Header row
-  let headerHtml = '<tr><th class="g-th" style="position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);padding:8px 12px;text-align:left;width:180px">專案</th>';
-  for (let d=1; d<=daysInMonth; d++) {
-    const dateStr = ganttYear+'-'+String(ganttMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const isToday = dateStr === todayStr;
+  let html = '<tr><th style="position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);padding:8px 12px;min-width:160px;text-align:left;font-size:0.75rem;color:var(--ink4)">專案</th>';
+  for (let d=1; d<=days; d++) {
+    const ds = `${ganttYear}-${String(ganttMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dow = new Date(ganttYear, ganttMonth, d).getDay();
-    const isWeekend = dow===0||dow===6;
-    headerHtml += `<th class="g-th${isToday?' today-col':''}" style="${isWeekend?'color:var(--border2)':''}">${d}</th>`;
+    html += `<th class="g-th${ds===todayStr?' today-h':''}${(dow===0||dow===6)?' weekend':''}">${d}</th>`;
   }
-  headerHtml += '</tr>';
-
-  // Project rows
-  const rowsHtml = projects.map(p => {
-    const gCol = getProjectColor(p.id);
-    let rowHtml = `<tr><td class="g-label-td" style="border-left:4px solid ${gCol}"><div class="g-proj-name">${escHtml(p.name)}</div><div class="g-proj-client">${escHtml(p.client||'')}</div></td>`;
-
-    for (let d=1; d<=daysInMonth; d++) {
-      const dateStr = ganttYear+'-'+String(ganttMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-      const isToday = dateStr === todayStr;
+  html += '</tr>';
+  html += projects.map(p => {
+    const col = getProjectColor(p.id);
+    let row = `<tr><td class="g-label-td" style="border-left:3px solid ${col}"><div class="g-proj-name">${escHtml(p.name)}</div><div class="g-proj-client">${escHtml(p.client||'')}</div></td>`;
+    for (let d=1; d<=days; d++) {
+      const ds = `${ganttYear}-${String(ganttMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const dow = new Date(ganttYear, ganttMonth, d).getDay();
-      const isWeekend = dow===0||dow===6;
-
-      // find milestones on this date
-      const projCol = getProjectColor(p.id);
       const dots = allMs.filter(m => {
-        if (!p.milestones?.[m.key]) return false;
-        if (!p.hasPhoto && (m.key.startsWith('photo_'))) return false;
-        return p.milestones[m.key].date === dateStr;
+        if (!p.milestones?.[m.key]?.date) return false;
+        if (!p.hasPhoto && m.key.startsWith('photo_')) return false;
+        return p.milestones[m.key].date === ds;
       }).map(m => {
         const st = p.milestones[m.key].status || 'upcoming';
-        const dotStyle = st==='done'
-          ? `background:${projCol}`
-          : st==='in-progress'
-          ? `background:${hexToRgba(projCol,0.5)};outline:2px solid ${projCol};outline-offset:1px`
-          : `background:white;border:2px solid ${hexToRgba(projCol,0.4)}`;
-        return `<span class="g-dot" style="${dotStyle}" onmouseenter="showGanttTip(event,'${escHtml(p.name)} — ${m.name}')" onmouseleave="hideGanttTip()"></span>`;
+        const bg = st==='done' ? col : st==='in-progress' ? hexToRgba(col,0.5) : '#fff';
+        const border = st==='upcoming' ? `border:1px solid ${hexToRgba(col,0.4)}` : '';
+        return `<span class="g-dot" style="background:${bg};${border}" onmouseenter="showTip(event,'${escHtml(p.name)} — ${m.name}')" onmouseleave="hideTip()"></span>`;
       }).join('');
-
-      rowHtml += `<td class="g-day-td${isToday?' today-col':''}" style="${isWeekend?'background:var(--bg)':''}">${dots}</td>`;
+      row += `<td class="g-day-td${ds===todayStr?' today-h':''}${(dow===0||dow===6)?' weekend':''}">${dots}</td>`;
     }
-    rowHtml += '</tr>';
-    return rowHtml;
+    return row + '</tr>';
   }).join('');
-
-  table.innerHTML = headerHtml + rowsHtml;
+  table.innerHTML = html;
 }
 
-function showGanttTip(e, text) {
-  const tip = document.getElementById('ganttTooltip');
-  tip.textContent = text;
-  tip.style.display = 'block';
-  tip.style.left = (e.clientX+12)+'px';
-  tip.style.top = (e.clientY-28)+'px';
+function showTip(e, text) {
+  const t = document.getElementById('ganttTooltip');
+  t.textContent = text; t.style.display = 'block';
+  t.style.left = (e.clientX+12)+'px'; t.style.top = (e.clientY-28)+'px';
 }
-function hideGanttTip() {
-  document.getElementById('ganttTooltip').style.display = 'none';
-}
+function hideTip() { document.getElementById('ganttTooltip').style.display = 'none'; }
 
-// ── 日曆視圖 ──
-let calYear = new Date().getFullYear();
-let calMonth = new Date().getMonth();
-let calSelectedDate = null;
-
-function calPrev() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
-function calNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+// ── 日曆 ──
+let calYear = new Date().getFullYear(), calMonth = new Date().getMonth();
+function calPrev()    { if(--calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNext()    { if(++calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
 function calGoToday() { calYear=new Date().getFullYear(); calMonth=new Date().getMonth(); renderCalendar(); }
 
 function renderCalendar() {
-  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  document.getElementById('calMonthLabel').textContent = calYear + ' 年 ' + monthNames[calMonth];
-
+  const mn = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  document.getElementById('calMonthLabel').textContent = `${calYear} 年 ${mn[calMonth]}`;
   const allMs = [...MILESTONES_VIDEO, ...MILESTONES_PHOTO];
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0,10);
-
-  // 建立日期 → 事件 map
+  const todayStr = new Date().toISOString().slice(0,10);
   const evMap = {};
-  projects.forEach(p => {
-    allMs.forEach(m => {
-      if (!p.milestones?.[m.key]) return;
-      if (!p.hasPhoto && m.key.startsWith('photo_')) return;
-      const date = p.milestones[m.key].date;
-      if (!date) return;
-      if (!evMap[date]) evMap[date] = [];
-      evMap[date].push({ proj: p, ms: m, status: p.milestones[m.key].status, color: getProjectColor(p.id) });
-    });
-  });
-
-  const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  projects.forEach(p => allMs.forEach(m => {
+    if (!p.milestones?.[m.key]?.date) return;
+    if (!p.hasPhoto && m.key.startsWith('photo_')) return;
+    const dt = p.milestones[m.key].date;
+    if (!evMap[dt]) evMap[dt] = [];
+    evMap[dt].push({ p, m, status: p.milestones[m.key].status, color: getProjectColor(p.id) });
+  }));
+  const first = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
-  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
-
+  const daysInPrev  = new Date(calYear, calMonth, 0).getDate();
   const days = ['日','一','二','三','四','五','六'];
-  let html = days.map(d=>`<div class="cal-day-header">${d}</div>`).join('');
-
-  // prev month padding
-  for (let i=0; i<firstDay; i++) {
-    const d = daysInPrev - firstDay + 1 + i;
-    const pm = calMonth===0?12:calMonth;
-    const py = calMonth===0?calYear-1:calYear;
-    const ds = py+'-'+String(pm).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const evs = evMap[ds]||[];
-    html += buildCalDay(d, ds, evs, true, false);
+  let html = days.map(d=>`<div class="cal-head">${d}</div>`).join('');
+  const mkDay = (d, ds, evs, other, isToday) => {
+    const cls = ['cal-day', other?'other-m':'', evs.length?'has-ev':'', isToday?'is-today':''].filter(Boolean).join(' ');
+    const chips = evs.slice(0,3).map(ev => {
+      const bg = ev.status==='done' ? hexToRgba(ev.color,0.35) : ev.color;
+      const nm = ev.p.name.length>9 ? ev.p.name.slice(0,8)+'…' : ev.p.name;
+      return `<div class="proj-chip" style="background:${bg}">${escHtml(nm)}</div>`;
+    }).join('');
+    return `<div class="${cls}" onclick="calClick('${ds}')"><div class="cal-dn">${d}</div>${chips}</div>`;
+  };
+  for (let i=0; i<first; i++) {
+    const d = daysInPrev-first+1+i;
+    const pm = calMonth===0?12:calMonth, py = calMonth===0?calYear-1:calYear;
+    const ds = `${py}-${String(pm).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    html += mkDay(d, ds, evMap[ds]||[], true, false);
   }
-  // current month
   for (let d=1; d<=daysInMonth; d++) {
-    const ds = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const evs = evMap[ds]||[];
-    const isToday = ds===todayStr;
-    html += buildCalDay(d, ds, evs, false, isToday);
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    html += mkDay(d, ds, evMap[ds]||[], false, ds===todayStr);
   }
-  // next month padding
-  const total = firstDay + daysInMonth;
-  const remaining = total%7===0?0:7-(total%7);
-  for (let d=1; d<=remaining; d++) {
-    const nm = calMonth===11?1:calMonth+2;
-    const ny = calMonth===11?calYear+1:calYear;
-    const ds = ny+'-'+String(nm).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    html += buildCalDay(d, ds, [], true, false);
+  const total = first+daysInMonth, rem = total%7===0?0:7-(total%7);
+  for (let d=1; d<=rem; d++) {
+    const nm = calMonth===11?1:calMonth+2, ny = calMonth===11?calYear+1:calYear;
+    const ds = `${ny}-${String(nm).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    html += mkDay(d, ds, [], true, false);
   }
-
   document.getElementById('calGrid').innerHTML = html;
   document.getElementById('calDetail').style.display = 'none';
 }
 
-function buildCalDay(d, ds, evs, otherMonth, isToday) {
-  const classes = ['cal-day', otherMonth?'other-m':'', evs.length?'has-ev':'', isToday?'is-today':''].filter(Boolean).join(' ');
-  const dots = evs.slice(0,3).map(ev => {
-    const isPhoto = ev.ms.key.startsWith('photo_');
-    const cls = ev.status==='done'?'done': isPhoto?'ph':'v';
-    return `<div class="cal-ev-chip ${cls==="done"?"chip-done":cls==="ph"?"chip-ph":"chip-v"}">${escHtml(ev.proj.name.length>8?ev.proj.name.slice(0,7)+'…':ev.proj.name)}</div>`;
-  }).join('');
-  const more = evs.length>3?`<div style="font-size:9px;color:var(--text3)">+${evs.length-3} 更多</div>`:'';
-  return `<div class="${classes}" onclick="calSelectDay('${ds}')"><div class="cal-dn">${d}</div>${dots}${more}</div>`;
-}
-
-function calSelectDay(ds) {
-  calSelectedDate = ds;
+function calClick(ds) {
   const allMs = [...MILESTONES_VIDEO, ...MILESTONES_PHOTO];
   const evs = [];
-  projects.forEach(p => {
-    allMs.forEach(m => {
-      if (!p.milestones?.[m.key]) return;
-      if (!p.hasPhoto && m.key.startsWith('photo_')) return;
-      if (p.milestones[m.key].date !== ds) return;
-      evs.push({ proj: p, ms: m, status: p.milestones[m.key].status });
-    });
-  });
-
+  projects.forEach(p => allMs.forEach(m => {
+    if (!p.milestones?.[m.key]?.date) return;
+    if (!p.hasPhoto && m.key.startsWith('photo_')) return;
+    if (p.milestones[m.key].date !== ds) return;
+    evs.push({ p, m, status: p.milestones[m.key].status });
+  }));
   const panel = document.getElementById('calDetail');
   if (!evs.length) { panel.style.display='none'; return; }
-
-  const stLabel = {done:'已完成','in-progress':'進行中',upcoming:'未開始'};
-  const stClass = {done:'status-pill s-completed','in-progress':'status-pill s-ongoing',upcoming:'status-pill s-paused'};
-  const isPhoto = key => key.startsWith('photo_');
-
-  panel.innerHTML = `<div class="cal-detail-title">📅 ${ds} — 共 ${evs.length} 個節點</div>`
-    + evs.map(ev=>`<div class="cal-ev-row">
-      <span style="font-size:14px">${isPhoto(ev.ms.key)?'📷':'🎬'}</span>
-      <span class="cal-ev-proj">${escHtml(ev.proj.name)}</span>
-      <span class="cal-ev-ms">${ev.ms.name}</span>
-      <span class="cal-ev-badge status-badge ${stClass[ev.status]||'s-paused'}">${stLabel[ev.status]||ev.status}</span>
-    </div>`).join('');
+  const stLabel = { done:'已完成', 'in-progress':'進行中', upcoming:'未開始' };
+  const stClass = { done:'s-completed', 'in-progress':'s-ongoing', upcoming:'s-paused' };
+  panel.innerHTML = `<div class="cal-detail-title">📅 ${ds} — ${evs.length} 個節點</div>`
+    + evs.map(ev => {
+      const col = getProjectColor(ev.p.id);
+      return `<div class="cal-ev-row" style="border-left-color:${col}">
+        <span class="cal-ev-icon">${ev.m.key.startsWith('photo_')?'📷':'🎬'}</span>
+        <span class="cal-ev-proj" style="color:${col}">${escHtml(ev.p.name)}</span>
+        <span class="cal-ev-ms">${ev.m.name}</span>
+        <span class="cal-ev-badge status-pill ${stClass[ev.status]||'s-paused'}">${stLabel[ev.status]||ev.status}</span>
+      </div>`;
+    }).join('');
   panel.style.display = 'block';
 }
 
-
-    },
-    {
-      id:'2', name:'統一企業 過年促銷影片', owner:'小明', status:'completed',
-      year:2024, created:'2024/11/10', client:'統一企業', contact:'林先生',
-      hasPhoto:false, notes:'已結案，素材備份於雲端硬碟',
-      milestones:{
-        script_draft:{ status:'done', date:'2024-11-15' },
-        script_final:{ status:'done', date:'2024-11-22' },
-        shooting:    { status:'done', date:'2024-12-03' },
-        acopy:       { status:'done', date:'2024-12-20' },
-        bcopy:       { status:'done', date:'2024-12-25' },
-        copy:        { status:'done', date:'2024-12-26' },
-        release:     { status:'done', date:'2025-01-05' },
-      }
-    },
-    {
-      id:'3', name:'全聯 新品上市 15秒', owner:'小明', status:'pending',
-      year:2025, created:'2025/02/01', client:'全聯福利中心', contact:'王小姐',
-      hasPhoto:false, notes:'等待客戶確認腳本方向',
-      milestones:{
-        script_draft:{ status:'done', date:'2025-02-10' },
-        script_final:{ status:'upcoming', date:'' },
-        shooting:    { status:'upcoming', date:'' },
-        acopy:       { status:'upcoming', date:'' },
-        bcopy:       { status:'upcoming', date:'' },
-        copy:        { status:'upcoming', date:'' },
-        release:     { status:'upcoming', date:'' },
-      }
-    },
-    {
-      id:'4', name:'Nike 秋冬商品形象', owner:'小明', status:'completed',
-      year:2025, created:'2025/03/01', client:'Nike Taiwan', contact:'陳小姐',
-      hasPhoto:true, notes:'',
-      milestones:{
-        script_draft:{ status:'done', date:'2025-03-05' },
-        script_final:{ status:'done', date:'2025-03-10' },
-        shooting:    { status:'done', date:'2025-03-20' },
-        acopy:       { status:'done', date:'2025-04-01' },
-        bcopy:       { status:'done', date:'2025-04-05' },
-        copy:        { status:'done', date:'2025-04-06' },
-        release:     { status:'done', date:'2025-04-15' },
-        photo_acopy:    { status:'done', date:'2025-03-28' },
-        photo_bcopy:     { status:'done', date:'2025-04-05' },
-        photo_delivery:  { status:'done', date:'2025-04-10' },
-      }
-    },
-  ];
-  save();
+// ── 確認圖 ──
+let exportId = null;
+function openExport(id) {
+  exportId = id;
+  const p = projects.find(x=>x.id===id);
+  if (!p) return;
+  document.getElementById('exportOverlay').classList.remove('hidden');
+  drawCanvas(p);
+}
+function closeExport() { document.getElementById('exportOverlay').classList.add('hidden'); }
+function downloadExport() {
+  const p = projects.find(x=>x.id===exportId);
+  const a = document.createElement('a');
+  a.download = `確認圖_${p?.name||'專案'}.png`;
+  a.href = document.getElementById('exportCanvas').toDataURL();
+  a.click();
 }
 
-
+function drawCanvas(p) {
+  const canvas = document.getElementById('exportCanvas');
+  const DPR = 2, W = 500;
+  const allMs = [...MILESTONES_VIDEO, ...(p.hasPhoto?MILESTONES_PHOTO:[])];
+  const items = allMs.map(m => ({
+    name: m.name, isPhoto: m.key.startsWith('photo_'),
+    date: p.milestones?.[m.key]?.date||'', status: p.milestones?.[m.key]?.status||'upcoming'
+  }));
+  const PAD=28, ROW=40, H = 110 + items.length*ROW + 50;
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
+  ctx.fillStyle='#fdf6ee'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#2c1e0f'; ctx.fillRect(0,0,W,6);
+  let y=20;
+  ctx.font='800 18px "Noto Sans TC",sans-serif'; ctx.fillStyle='#1e1008';
+  ctx.fillText(p.name.length>28?p.name.slice(0,27)+'…':p.name, PAD, y+18); y+=30;
+  ctx.font='700 11px "Noto Sans TC",sans-serif';
+  let tx=PAD;
+  if(p.client){const tw=ctx.measureText(p.client).width;ctx.fillStyle='#2c1e0f';ctx.fillRect(tx,y,tw+16,20);ctx.fillStyle='#fff';ctx.fillText(p.client,tx+8,y+14);tx+=tw+22;}
+  if(p.contact){const tw=ctx.measureText(p.contact).width;ctx.fillStyle='#4a2e14';ctx.fillRect(tx,y,tw+16,20);ctx.fillStyle='#fff';ctx.fillText(p.contact,tx+8,y+14);}
+  y+=32;
+  ctx.strokeStyle='#d9c4aa';ctx.lineWidth=1;ctx.setLineDash([6,3]);
+  ctx.beginPath();ctx.moveTo(PAD,y);ctx.lineTo(W-PAD,y);ctx.stroke();ctx.setLineDash([]);y+=14;
+  ctx.font='700 10px "DM Mono",monospace';ctx.fillStyle='#a07850';
+  ctx.fillText('影片節點', PAD, y+10); y+=18;
+  items.forEach((m,i)=>{
+    if(i%2===0){ctx.fillStyle='#f5ebe0';ctx.fillRect(PAD,y+i*ROW,W-PAD*2,ROW-4);}
+    const dx=PAD+8, dy=y+i*ROW+(ROW-4)/2;
+    if(m.status==='done'){ctx.fillStyle='#1e7a44';ctx.fillRect(dx,dy-4,8,8);}
+    else if(m.status==='in-progress'){ctx.fillStyle='#2563a8';ctx.fillRect(dx,dy-4,8,8);}
+    else{ctx.strokeStyle='#d9c4aa';ctx.lineWidth=1.5;ctx.strokeRect(dx,dy-4,8,8);}
+    ctx.font='700 13px "Noto Sans TC",sans-serif';ctx.fillStyle='#1e1008';
+    ctx.fillText(m.name, PAD+22, y+i*ROW+(ROW-4)/2+5);
+    ctx.font='500 11px "DM Mono",monospace';ctx.fillStyle='#4a2e14';
+    ctx.textAlign='right';
+    ctx.fillText(m.date||'TBD', W-PAD, y+i*ROW+(ROW-4)/2+5);
+    ctx.textAlign='left';
+  });
+  y+=items.length*ROW+8;
+  ctx.strokeStyle='#2c1e0f';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(PAD,y);ctx.lineTo(W-PAD,y);ctx.stroke();y+=14;
+  ctx.font='500 10px "DM Mono",monospace';ctx.fillStyle='#a07850';
+  ctx.fillText(new Date().toLocaleDateString('zh-TW'), PAD, y+10);
+  ctx.textAlign='right';ctx.fillText('早起上班的 ZAKI', W-PAD, y+10);ctx.textAlign='left';
+}
 
 </script>
 </body>
