@@ -398,6 +398,7 @@ header {
   <button class="nav-tab" onclick="switchPage('gantt',this)">甘特圖</button>
   <button class="nav-tab" onclick="switchPage('calendar',this)">日曆視圖</button>
   <button class="nav-tab" onclick="switchPage('clients',this)">客戶統計</button>
+  <button class="nav-tab" onclick="switchPage('income',this)">收入總覽</button>
 </div>
 
 <div class="container">
@@ -450,6 +451,36 @@ header {
     </div>
     <div class="client-grid" id="clientCards"></div>
   </div>
+  <!-- 收入總覽 -->
+  <div class="page" id="page-income">
+    <div class="section-controls" style="gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:0.78rem;font-weight:700;color:var(--ink4);text-transform:uppercase;letter-spacing:0.06em">從</label>
+        <input type="month" id="incomeFrom" class="styled-select">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:0.78rem;font-weight:700;color:var(--ink4);text-transform:uppercase;letter-spacing:0.06em">到</label>
+        <input type="month" id="incomeTo" class="styled-select">
+      </div>
+      <button class="btn-add" style="padding:7px 18px;font-size:0.85rem" onclick="renderIncome()">套用</button>
+    </div>
+
+    <!-- 統計卡片 -->
+    <div class="stats-bar" style="margin-bottom:20px" id="incomeStats"></div>
+
+    <!-- 長條圖 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:16px;box-shadow:var(--shadow)">
+      <div style="font-size:0.78rem;font-weight:700;color:var(--ink4);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:16px">各案收入</div>
+      <div id="incomeChart" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- 按客戶統計 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:var(--shadow)">
+      <div style="font-size:0.78rem;font-weight:700;color:var(--ink4);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:16px">按客戶統計</div>
+      <div id="incomeByClient"></div>
+    </div>
+  </div>
+
 </div>
 
 <div class="modal-overlay hidden" id="modal">
@@ -466,6 +497,7 @@ header {
       <div><label class="form-label">窗口姓名</label><input class="form-input" id="fContact" placeholder="例：陳小姐"></div>
     </div>
     <div class="form-row"><label class="checkbox-label"><input type="checkbox" id="fHasPhoto"><span>此案包含照片拍攝</span></label></div>
+    <div class="form-row"><label class="form-label">專案費用（NT$）</label><input class="form-input" id="fFee" type="number" min="0" placeholder="例：80000"></div>
     <div class="form-row"><label class="form-label">備註</label><textarea class="form-textarea" id="fNotes" placeholder="預算、特殊需求、聯絡資訊…"></textarea></div>
     <div class="form-row">
       <div class="ms-form-section-title">影片節點</div>
@@ -623,6 +655,7 @@ function switchPage(name, el) {
   if (name === 'clients')  { initYearSelect(); renderClients(); }
   if (name === 'gantt')    { renderGantt(); }
   if (name === 'calendar') { renderCalendar(); }
+  if (name === 'income')   { initIncomeDates(); renderIncome(); }
 }
 
 function initYearSelect() {
@@ -675,7 +708,7 @@ function render() {
         <div class="card-num">${String(i+1).padStart(2,'0')}</div>
         <div class="card-main">
           <div class="card-title">${escHtml(p.name)}</div>
-          <div class="card-meta"><span>負責人：${escHtml(p.owner||'—')}</span><span>建立：${p.created||'—'}</span></div>
+          <div class="card-meta"><span>負責人：${escHtml(p.owner||'—')}</span><span>建立：${p.created||'—'}</span>${p.fee?`<span style="color:var(--accent);font-weight:700">NT$ ${p.fee.toLocaleString()}</span>`:''}</div>
         </div>
         <span class="status-pill ${STATUS_CLASSES[p.status]}">${STATUS_LABELS[p.status]}</span>
         <span class="card-chevron" id="chv-${p.id}">▾</span>
@@ -744,7 +777,7 @@ function togglePhotoSection() {
 function openModal() {
   editingId = null;
   document.getElementById('modalTitle').textContent = '新增廣告案';
-  ['fName','fOwner','fClient','fContact','fNotes'].forEach(id => document.getElementById(id).value = '');
+  ['fName','fOwner','fClient','fContact','fNotes','fFee'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fStatus').value = 'ongoing';
   document.getElementById('fYear').value = new Date().getFullYear();
   document.getElementById('fHasPhoto').checked = false;
@@ -769,6 +802,7 @@ function openEditModal(id) {
   document.getElementById('fContact').value = p.contact || '';
   document.getElementById('fHasPhoto').checked = !!p.hasPhoto;
   document.getElementById('fNotes').value   = p.notes   || '';
+  document.getElementById('fFee').value    = p.fee != null ? p.fee : '';
   document.getElementById('photoSection').style.display = p.hasPhoto ? 'block' : 'none';
   document.getElementById('milestonesVideoForm').innerHTML = buildMsForm(MILESTONES_VIDEO, p.milestones||{});
   document.getElementById('milestonesPhotoForm').innerHTML = buildMsForm(MILESTONES_PHOTO, p.milestones||{});
@@ -799,6 +833,7 @@ async function saveProject() {
     contact:  document.getElementById('fContact').value.trim(),
     hasPhoto: document.getElementById('fHasPhoto').checked,
     notes:    document.getElementById('fNotes').value.trim(),
+    fee:      parseFloat(document.getElementById('fFee').value) || 0,
     milestones,
   };
   if (editingId) {
@@ -1012,6 +1047,97 @@ function drawCanvas(p) {
   ctx.font='500 10px "DM Mono",monospace';ctx.fillStyle='#a07850';
   ctx.fillText(new Date().toLocaleDateString('zh-TW'), PAD, y+10);
   ctx.textAlign='right';ctx.fillText('早起上班的 ZAKI', W-PAD, y+10);ctx.textAlign='left';
+}
+
+
+// ── 收入總覽 ──
+function initIncomeDates() {
+  const now = new Date();
+  const fromEl = document.getElementById('incomeFrom');
+  const toEl   = document.getElementById('incomeTo');
+  if (!fromEl.value) {
+    // 預設：本年度第一個月到現在
+    fromEl.value = `${now.getFullYear()}-01`;
+  }
+  if (!toEl.value) {
+    toEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+}
+
+function renderIncome() {
+  const fromVal = document.getElementById('incomeFrom').value;
+  const toVal   = document.getElementById('incomeTo').value;
+  if (!fromVal || !toVal) return;
+
+  const from = new Date(fromVal + '-01');
+  const to   = new Date(toVal   + '-01');
+  to.setMonth(to.getMonth() + 1); // 到月底
+
+  // 篩選有費用的案子，用 created 日期或 year 判斷
+  const inRange = projects.filter(p => {
+    if (!p.fee || p.fee <= 0) return false;
+    // 用 year 欄位或 created 日期
+    let d;
+    if (p.year) d = new Date(p.year + '-01-01');
+    else if (p.created) d = new Date(p.created.replace(/\//g, '-'));
+    else return false;
+    return d >= from && d < to;
+  });
+
+  const total = inRange.reduce((s, p) => s + (p.fee||0), 0);
+  const count = inRange.length;
+  const avg   = count ? Math.round(total/count) : 0;
+  const max   = count ? Math.max(...inRange.map(p=>p.fee||0)) : 0;
+
+  // 統計卡片
+  document.getElementById('incomeStats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">總收入</div><div class="stat-value" style="font-size:1.6rem">$${(total/10000).toFixed(1)}<span style="font-size:1rem;font-weight:400">萬</span></div><div class="stat-sub">NT$ ${total.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">案件數</div><div class="stat-value">${count}</div><div class="stat-sub">個有收入案子</div></div>
+    <div class="stat-card"><div class="stat-label">平均單案</div><div class="stat-value" style="font-size:1.6rem">$${Math.round(avg/1000)}<span style="font-size:1rem;font-weight:400">K</span></div><div class="stat-sub">NT$ ${avg.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">最高單案</div><div class="stat-value" style="font-size:1.6rem">$${Math.round(max/1000)}<span style="font-size:1rem;font-weight:400">K</span></div><div class="stat-sub">NT$ ${max.toLocaleString()}</div></div>
+  `;
+
+  // 長條圖（按費用排序）
+  const sorted = [...inRange].sort((a,b) => (b.fee||0)-(a.fee||0));
+  const maxFee = sorted[0]?.fee || 1;
+  document.getElementById('incomeChart').innerHTML = sorted.length
+    ? sorted.map(p => {
+        const col = getProjectColor(p.id);
+        const pct = Math.round((p.fee/maxFee)*100);
+        return `<div style="display:flex;align-items:center;gap:12px">
+          <div style="width:160px;font-size:0.82rem;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0">${escHtml(p.name)}</div>
+          <div style="flex:1;background:var(--bg);border-radius:4px;height:28px;overflow:hidden">
+            <div style="width:${pct}%;background:${col};height:100%;border-radius:4px;transition:width 0.3s;display:flex;align-items:center;padding:0 10px;min-width:60px">
+              <span style="font-size:0.75rem;font-weight:700;color:#fff;white-space:nowrap">NT$ ${(p.fee||0).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="color:var(--ink4);font-size:0.9rem;text-align:center;padding:20px">此區間沒有收入資料</div>';
+
+  // 按客戶統計
+  const byClient = {};
+  inRange.forEach(p => {
+    const c = p.client || '未填寫客戶';
+    if (!byClient[c]) byClient[c] = { total: 0, count: 0, projects: [] };
+    byClient[c].total += p.fee || 0;
+    byClient[c].count++;
+    byClient[c].projects.push(p.name);
+  });
+  const clientSorted = Object.entries(byClient).sort((a,b) => b[1].total - a[1].total);
+  document.getElementById('incomeByClient').innerHTML = clientSorted.length
+    ? clientSorted.map(([client, data]) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg);border-radius:var(--r-sm);margin-bottom:6px;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:0.9rem;font-weight:700;color:var(--ink)">${escHtml(client)}</div>
+            <div style="font-size:0.78rem;color:var(--ink4);margin-top:2px">${data.projects.map(n=>escHtml(n)).join('、')}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:1rem;font-weight:900;color:var(--accent)">NT$ ${data.total.toLocaleString()}</div>
+            <div style="font-size:0.75rem;color:var(--ink4)">${data.count} 件</div>
+          </div>
+        </div>`).join('')
+    : '<div style="color:var(--ink4);font-size:0.9rem;text-align:center;padding:20px">此區間沒有收入資料</div>';
 }
 
 </script>
