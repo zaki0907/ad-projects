@@ -1075,6 +1075,7 @@ function renderIncome() {
 
   // 篩選有費用的案子，用 created 日期或 year 判斷
   const inRange = projects.filter(p => {
+    if (p.status !== 'completed') return false;
     if (!p.fee || p.fee <= 0) return false;
     // 用 year 欄位或 created 日期
     let d;
