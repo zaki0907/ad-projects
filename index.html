@@ -874,7 +874,7 @@ function renderGantt() {
     html += `<th class="g-th${ds===todayStr?' today-h':''}${(dow===0||dow===6)?' weekend':''}">${d}</th>`;
   }
   html += '</tr>';
-  html += projects.map(p => {
+  html += projects.filter(p => p.status !== 'completed').map(p => {
     const col = getProjectColor(p.id);
     let row = `<tr><td class="g-label-td" style="border-left:3px solid ${col}"><div class="g-proj-name">${escHtml(p.name)}</div><div class="g-proj-client">${escHtml(p.client||'')}</div></td>`;
     for (let d=1; d<=days; d++) {
