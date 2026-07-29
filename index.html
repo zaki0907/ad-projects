@@ -1106,7 +1106,7 @@ function renderIncome() {
   to.setMonth(to.getMonth() + 1);
 
   const inRange = projects.filter(p => {
-    if (p.status !== 'completed') return false;
+    if (p.status !== 'completed' && p.status !== 'invoicing') return false;
     if (!p.fee || p.fee <= 0) return false;
     let d;
     if (p.year) d = new Date(p.year + '-01-01');
@@ -1116,7 +1116,7 @@ function renderIncome() {
   });
 
   const total   = inRange.reduce((s,p) => s+(p.fee||0), 0);
-  const pending = inRange.filter(p => p.payStatus==='invoiced').reduce((s,p) => s+(p.fee||0), 0);
+  const pending = inRange.filter(p => p.status==='invoicing' || p.payStatus==='invoiced').reduce((s,p) => s+(p.fee||0), 0);
 
   document.getElementById('incomeStats').innerHTML = `
     <div class="stat-card">
