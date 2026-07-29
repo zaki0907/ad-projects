@@ -516,6 +516,10 @@ header {
         <input class="form-input" type="date" id="fPayDate">
       </div>
     </div>
+    <div class="form-row"><label class="checkbox-label">
+        <input type="checkbox" id="fPublished" onchange="autoSyncPublished()">
+        <span>✅ 已上片</span>
+      </label></div>
     <div class="form-row"><label class="form-label">備註</label><textarea class="form-textarea" id="fNotes" placeholder="預算、特殊需求、聯絡資訊…"></textarea></div>
     <div class="form-row">
       <div class="ms-form-section-title">影片節點</div>
@@ -729,7 +733,8 @@ function render() {
           <div class="card-meta"><span>負責人：${escHtml(p.owner||'—')}</span><span>建立：${p.created||'—'}</span>${p.fee?`<span style="color:var(--accent);font-weight:700">NT$ ${p.fee.toLocaleString()}</span>`:''}</div>
         </div>
         <span class="status-pill ${STATUS_CLASSES[p.status]}">${STATUS_LABELS[p.status]}</span>
-        ${p.fee ? `<span class="pay-badge ${{unpaid:'pay-unpaid',invoiced:'pay-invoiced',received:'pay-received'}[p.payStatus||'unpaid']}">${{unpaid:'未送勞報單',invoiced:'已送勞報單',received:'已入帳'}[p.payStatus||'unpaid']}</span>` : ''}
+        ${p.published ? `<span class="pay-badge" style="background:#f0fdf4;color:#15803d;border-color:#bbf7d0">已上片</span>` : ''}
+      ${p.fee ? `<span class="pay-badge ${{unpaid:'pay-unpaid',invoiced:'pay-invoiced',received:'pay-received'}[p.payStatus||'unpaid']}">${{unpaid:'未送勞報單',invoiced:'已送勞報單',received:'已入帳'}[p.payStatus||'unpaid']}</span>` : ''}
         <span class="card-chevron" id="chv-${p.id}">▾</span>
       </div>
       <div class="card-body" id="body-${p.id}">
@@ -798,6 +803,7 @@ function openModal() {
   document.getElementById('modalTitle').textContent = '新增廣告案';
   ['fName','fOwner','fClient','fContact','fNotes','fFee','fPayDate'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fPayStatus').value = 'unpaid';
+  document.getElementById('fPublished').checked = false;
   document.getElementById('fStatus').value = 'pending';
   document.getElementById('fYear').value = new Date().getFullYear();
   document.getElementById('fHasPhoto').checked = false;
@@ -824,6 +830,7 @@ function openEditModal(id) {
   document.getElementById('fNotes').value   = p.notes   || '';
   document.getElementById('fFee').value       = p.fee != null ? p.fee : '';
   document.getElementById('fPayStatus').value = p.payStatus || 'unpaid';
+  document.getElementById('fPublished').checked = !!p.published;
   document.getElementById('fPayDate').value   = p.payDate   || '';
   document.getElementById('photoSection').style.display = p.hasPhoto ? 'block' : 'none';
   document.getElementById('milestonesVideoForm').innerHTML = buildMsForm(MILESTONES_VIDEO, p.milestones||{});
@@ -856,6 +863,7 @@ async function saveProject() {
     hasPhoto: document.getElementById('fHasPhoto').checked,
     notes:    document.getElementById('fNotes').value.trim(),
     fee:       parseFloat(document.getElementById('fFee').value) || 0,
+    published:  document.getElementById('fPublished').checked,
     payStatus: document.getElementById('fPayStatus').value,
     payDate:   document.getElementById('fPayDate').value,
     milestones,
@@ -1174,6 +1182,13 @@ function renderIncome() {
     : '<div style="color:var(--ink4);font-size:0.9rem;text-align:center;padding:20px">此區間沒有收入資料</div>';
 }
 
+
+// ── 已上片自動同步專案狀態 ──
+function autoSyncPublished() {
+  if (document.getElementById('fPublished').checked) {
+    document.getElementById('fStatus').value = 'invoicing';
+  }
+}
 
 // ── 收款狀態自動同步專案狀態 ──
 function autoSyncStatus() {
