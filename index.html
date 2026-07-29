@@ -1115,7 +1115,7 @@ function renderIncome() {
     return d >= from && d < to;
   });
 
-  const total   = inRange.reduce((s,p) => s+(p.fee||0), 0);
+  const total   = inRange.filter(p => p.payStatus==='received').reduce((s,p) => s+(p.fee||0), 0);
   const pending = inRange.filter(p => p.status==='invoicing' || p.payStatus==='invoiced').reduce((s,p) => s+(p.fee||0), 0);
 
   document.getElementById('incomeStats').innerHTML = `
