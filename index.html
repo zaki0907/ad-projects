@@ -417,11 +417,11 @@ header {
     </div>
     <div class="toolbar">
       <div class="toolbar-left">
-        <button class="filter-pill active" onclick="setFilter('all',this)">全部</button>
-        <button class="filter-pill" onclick="setFilter('pending',this)">待確認</button>
-        <button class="filter-pill" onclick="setFilter('ongoing',this)">執行中</button>
+        <button class="filter-pill active" onclick="setFilter('ongoing',this)">執行中</button>
         <button class="filter-pill" onclick="setFilter('invoicing',this)">請款中</button>
+        <button class="filter-pill" onclick="setFilter('pending',this)">待確認</button>
         <button class="filter-pill" onclick="setFilter('completed',this)">已結案</button>
+        <button class="filter-pill" onclick="setFilter('all',this)">全部</button>
       </div>
       <button class="btn-add" onclick="openModal()">＋ 新增</button>
     </div>
@@ -582,7 +582,7 @@ function hexToRgba(hex, a) {
 // ── 資料 ──
 let projects = [];
 let editingId = null;
-let currentFilter = 'all';
+let currentFilter = 'ongoing';
 
 const DATA_REPO = 'zaki0907/ad-proj-data';
 const DATA_FILE = 'projects.json';
