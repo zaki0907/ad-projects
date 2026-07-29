@@ -507,8 +507,8 @@ header {
     <div class="form-grid-2">
       <div><label class="form-label">收款狀態</label>
         <select class="form-select" id="fPayStatus" onchange="autoSyncStatus()">
-          <option value="unpaid">未請款</option>
-          <option value="invoiced">已請款</option>
+          <option value="unpaid">未送勞報單</option>
+          <option value="invoiced">已送勞報單</option>
           <option value="received">已入帳</option>
         </select>
       </div>
@@ -729,7 +729,7 @@ function render() {
           <div class="card-meta"><span>負責人：${escHtml(p.owner||'—')}</span><span>建立：${p.created||'—'}</span>${p.fee?`<span style="color:var(--accent);font-weight:700">NT$ ${p.fee.toLocaleString()}</span>`:''}</div>
         </div>
         <span class="status-pill ${STATUS_CLASSES[p.status]}">${STATUS_LABELS[p.status]}</span>
-        ${p.fee ? `<span class="pay-badge ${{unpaid:'pay-unpaid',invoiced:'pay-invoiced',received:'pay-received'}[p.payStatus||'unpaid']}">${{unpaid:'未請款',invoiced:'已請款',received:'已入帳'}[p.payStatus||'unpaid']}</span>` : ''}
+        ${p.fee ? `<span class="pay-badge ${{unpaid:'pay-unpaid',invoiced:'pay-invoiced',received:'pay-received'}[p.payStatus||'unpaid']}">${{unpaid:'未送勞報單',invoiced:'已送勞報單',received:'已入帳'}[p.payStatus||'unpaid']}</span>` : ''}
         <span class="card-chevron" id="chv-${p.id}">▾</span>
       </div>
       <div class="card-body" id="body-${p.id}">
@@ -1122,8 +1122,8 @@ function renderIncome() {
   document.getElementById('incomeStats').innerHTML = `
     <div class="stat-card"><div class="stat-label">結案總金額</div><div class="stat-value" style="font-size:1.6rem">$${(total/10000).toFixed(1)}<span style="font-size:1rem;font-weight:400">萬</span></div><div class="stat-sub">NT$ ${total.toLocaleString()}</div></div>
     <div class="stat-card" style="border-color:#bbf7d0"><div class="stat-label" style="color:#15803d">✓ 已入帳</div><div class="stat-value" style="font-size:1.6rem;color:#15803d">$${(received/10000).toFixed(1)}<span style="font-size:1rem;font-weight:400">萬</span></div><div class="stat-sub">NT$ ${received.toLocaleString()}</div></div>
-    <div class="stat-card" style="border-color:#fde68a"><div class="stat-label" style="color:#a16207">⏳ 已請款待收</div><div class="stat-value" style="font-size:1.6rem;color:#a16207">$${(pending/10000).toFixed(1)}<span style="font-size:1rem;font-weight:400">萬</span></div><div class="stat-sub">NT$ ${pending.toLocaleString()}</div></div>
-    <div class="stat-card" style="border-color:#fed7aa"><div class="stat-label" style="color:#c2410c">！未請款</div><div class="stat-value" style="font-size:1.6rem;color:#c2410c">$${(unrequest/10000).toFixed(1)}<span style="font-size:1rem;font-weight:400">萬</span></div><div class="stat-sub">NT$ ${unrequest.toLocaleString()}</div></div>
+    <div class="stat-card" style="border-color:#fde68a"><div class="stat-label" style="color:#a16207">⏳ 已送勞報單待收</div><div class="stat-value" style="font-size:1.6rem;color:#a16207">$${(pending/10000).toFixed(1)}<span style="font-size:1rem;font-weight:400">萬</span></div><div class="stat-sub">NT$ ${pending.toLocaleString()}</div></div>
+    <div class="stat-card" style="border-color:#fed7aa"><div class="stat-label" style="color:#c2410c">！未送勞報單</div><div class="stat-value" style="font-size:1.6rem;color:#c2410c">$${(unrequest/10000).toFixed(1)}<span style="font-size:1rem;font-weight:400">萬</span></div><div class="stat-sub">NT$ ${unrequest.toLocaleString()}</div></div>
   `;
 
   // 長條圖（按費用排序）
@@ -1133,7 +1133,7 @@ function renderIncome() {
     ? sorted.map(p => {
         const col = getProjectColor(p.id);
         const pct = Math.round((p.fee/maxFee)*100);
-        const payLbl = {unpaid:'未請款',invoiced:'已請款',received:'已入帳'}[p.payStatus||'unpaid'];
+        const payLbl = {unpaid:'未送勞報單',invoiced:'已送勞報單',received:'已入帳'}[p.payStatus||'unpaid'];
         const payCls = {unpaid:'pay-unpaid',invoiced:'pay-invoiced',received:'pay-received'}[p.payStatus||'unpaid'];
         return `<div style="display:flex;align-items:center;gap:12px">
           <div style="width:150px;flex-shrink:0">
