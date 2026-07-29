@@ -1,0 +1,28 @@
+name: LINE 通知
+
+on:
+  schedule:
+    - cron: '0 23 * * *'
+    - cron: '0 23 * * 0'
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 每日節點提醒
+        if: github.event.schedule == '0 23 * * *'
+        run: |
+          curl -s "https://ad-projects-nine.vercel.app/api/notify?type=daily"
+
+      - name: 每週時程總覽
+        if: github.event.schedule == '0 23 * * 0'
+        run: |
+          curl -s "https://ad-projects-nine.vercel.app/api/notify?type=weekly"
+
+      - name: 手動測試
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          curl -s "https://ad-projects-nine.vercel.app/api/notify?type=weekly"
+          sleep 2
+          curl -s "https://ad-projects-nine.vercel.app/api/notify?type=daily"
