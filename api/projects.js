@@ -7,9 +7,17 @@ export default async function handler(req, res) {
 
   try {
     const sql = neon(process.env.DATABASE_URL);
-    const rows = await sql`
-      SELECT data FROM projects LIMIT 1
+
+    // 確保資料表存在
+    await sql`
+      CREATE TABLE IF NOT EXISTS projects (
+        id SERIAL PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
     `;
+
+    const rows = await sql`SELECT data FROM projects LIMIT 1`;
     const projects = rows.length ? rows[0].data : [];
     res.status(200).json(projects);
   } catch (e) {
