@@ -218,6 +218,8 @@ header {
 .ms-dot.in-progress { background: var(--col-ongoing); box-shadow: 0 0 0 3px rgba(26,95,168,0.2); }
 .ms-dot.upcoming    { background: #fff; border: 2px solid var(--border); }
 .ms-name { font-size: 0.88rem; font-weight: 700; color: var(--ink); flex: 1; }
+.ms-check { width: 15px; height: 15px; accent-color: var(--col-done); cursor: pointer; flex-shrink: 0; }
+.ms-name-done { text-decoration: line-through; color: var(--ink4); }
 .ms-status { display: none; }
 .ms-status.done { display: inline; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: var(--r-pill); background: var(--col-done-bg); color: var(--col-done); border: 1px solid var(--col-done); }
 .ms-date { font-family: var(--mono); font-size: 0.8rem; color: var(--ink3); min-width: 85px; text-align: right; }
@@ -656,7 +658,14 @@ function render() {
     const mkMs = (defs) => defs.map(m => {
       const ms = p.milestones?.[m.key] || {};
       const st = ms.status || 'upcoming';
-      return `<div class="ms-row"><span class="ms-dot ${st}"></span><span class="ms-name">${m.name}</span><span class="ms-status ${st}">${stLabel[st]}</span><span class="ms-date${ms.date?'':' empty'}">${ms.date||'—'}</span></div>`;
+      const checked = ms.checked ? 'checked' : '';
+      return `<div class="ms-row">
+        <input type="checkbox" class="ms-check" ${checked} onchange="toggleMsCheck('${p.id}','${m.key}',this.checked)" title="標記完成">
+        <span class="ms-dot ${st}"></span>
+        <span class="ms-name${ms.checked?' ms-name-done':''}">${m.name}</span>
+        <span class="ms-status ${st}">${stLabel[st]}</span>
+        <span class="ms-date${ms.date?'':' empty'}">${ms.date||'—'}</span>
+      </div>`;
     }).join('');
     const tags = [
       p.client  ? `<span class="tag tag-client">${escHtml(p.client)}</span>`   : '',
@@ -1157,6 +1166,18 @@ function autoSyncStatus() {
   } else if (payStatus === 'received') {
     statusEl.value = 'completed';
   }
+}
+
+
+// ── 節點勾選 ──
+async function toggleMsCheck(projId, msKey, checked) {
+  const p = projects.find(x => x.id === projId);
+  if (!p) return;
+  if (!p.milestones) p.milestones = {};
+  if (!p.milestones[msKey]) p.milestones[msKey] = {};
+  p.milestones[msKey].checked = checked;
+  await save();
+  render();
 }
 
 </script>
