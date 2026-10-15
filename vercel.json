@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    {"source":"/", "destination":"/studio/index.html"},
+    {"source":"/app.mjs", "destination":"/studio/app.mjs"},
+    {"source":"/model.mjs", "destination":"/studio/model.mjs"},
+    {"source":"/style.css", "destination":"/studio/style.css"}
+  ],
+  "headers": [{"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"same-origin"},{"key":"X-Frame-Options","value":"DENY"}]}]
+}

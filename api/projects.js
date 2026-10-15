@@ -1,26 +1,2 @@
-import { neon } from '@neondatabase/serverless';
-
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  try {
-    const sql = neon(process.env.DATABASE_URL);
-
-    // 確保資料表存在
-    await sql`
-      CREATE TABLE IF NOT EXISTS projects (
-        id SERIAL PRIMARY KEY,
-        data JSONB NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `;
-
-    const rows = await sql`SELECT data FROM projects LIMIT 1`;
-    const projects = rows.length ? rows[0].data : [];
-    res.status(200).json(projects);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-}
+import {protect} from '../lib/studio-auth.mjs';
+export default function handler(req,res){if(!protect(req,res))return;return res.status(410).json({error:'請使用新版工作室'});}

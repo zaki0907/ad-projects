@@ -28,8 +28,10 @@ export default async function handler(req, res) {
 
   try {
     const sql = neon(process.env.DATABASE_URL);
-    const rows = await sql`SELECT data FROM projects LIMIT 1`;
-    const projects = rows.length ? rows[0].data : [];
+    const exists = await sql`SELECT to_regclass('public.studio_state') AS name`;
+    const current = exists[0].name ? await sql`SELECT data FROM studio_state WHERE id=1` : [];
+    const rows = current.length ? [] : await sql`SELECT data FROM projects LIMIT 1`;
+    const projects = current.length ? current[0].data.projects.map(p=>({...p,milestones:Object.fromEntries(p.tasks.filter(t=>t.status!=='done').map(t=>[t.key,{date:t.due}]))})) : rows.length ? rows[0].data : [];
 
     const twNow = new Date(Date.now() + 8 * 60 * 60 * 1000);
     const todayStr = twNow.toISOString().slice(0, 10);
